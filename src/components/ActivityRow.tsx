@@ -42,22 +42,20 @@ function DepList({
   labelRid: "predecessor_jsa_rid" | "successor_jsa_rid";
   activityMap: Map<number, Activity>;
 }) {
-  if (!deps.length) return <span className="text-gray-400 italic">None</span>;
+  const resolved = deps.filter((d) => activityMap.has(d[labelRid]));
+  if (!resolved.length) return <span className="text-gray-400 italic">None</span>;
   return (
     <ul className="space-y-0.5">
-      {deps.map((d) => {
-        const linked = activityMap.get(d[labelRid]);
-        return (
-          <li key={d.job_schedule_activity_dependency_id} className="text-xs">
-            <span className="font-medium">{d.dependency_type}</span>
-            {d.lag_days !== 0 && (
-              <span className="text-gray-500"> ({d.lag_days > 0 ? "+" : ""}{d.lag_days})</span>
-            )}
-            {" — "}
-            <span>{linked?.description ?? `Activity ${d[labelRid]}`}</span>
-          </li>
-        );
-      })}
+      {resolved.map((d) => (
+        <li key={d.job_schedule_activity_dependency_id} className="text-xs">
+          <span className="font-medium">{d.dependency_type}</span>
+          {d.lag_days !== 0 && (
+            <span className="text-gray-500"> ({d.lag_days > 0 ? "+" : ""}{d.lag_days})</span>
+          )}
+          {" — "}
+          <span>{activityMap.get(d[labelRid])!.description}</span>
+        </li>
+      ))}
     </ul>
   );
 }
