@@ -2,16 +2,8 @@
 
 import { useState } from "react";
 import { useJobs } from "@/hooks/useJobs";
+import { formatDate } from "@/lib/utils";
 import type { Job } from "@/types";
-
-function formatDate(d: string | null) {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 export function JobSelector({
   onSelect,
