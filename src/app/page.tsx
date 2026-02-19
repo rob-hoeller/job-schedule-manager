@@ -5,6 +5,7 @@ import { JobSelector } from "@/components/JobSelector";
 import { JobDetails } from "@/components/JobDetails";
 import { ListView } from "@/components/ListView";
 import { CalendarView } from "@/components/CalendarView";
+import { GanttView } from "@/components/GanttView";
 import { ViewTabs } from "@/components/ViewTabs";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useCalendarDays } from "@/hooks/useCalendarDays";
@@ -50,6 +51,13 @@ export default function Home() {
           )}
           {!loading && !error && view === "calendar" && (
             <CalendarView
+              activities={activities}
+              dependencies={dependencies}
+              calendarDays={calendarDays}
+            />
+          )}
+          {!loading && !error && view === "gantt" && (
+            <GanttView
               activities={activities}
               dependencies={dependencies}
               calendarDays={calendarDays}
