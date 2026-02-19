@@ -42,5 +42,19 @@ export interface Dependency {
   updated_on: string;
 }
 
+export interface CalendarDay {
+  calendar_day_id: string;
+  day_date: string;
+  year_number: number;
+  month_number: number;
+  day_of_month: number;
+  day_of_week: number;
+  day_of_week_name: string;
+  month_name: string;
+  description: string | null;
+  is_workday: number;
+}
+
 export type SortField = "current_start_date" | "description" | "trade_partner_name" | "status";
 export type SortDir = "asc" | "desc";
+export type ViewMode = "list" | "calendar" | "gantt";
