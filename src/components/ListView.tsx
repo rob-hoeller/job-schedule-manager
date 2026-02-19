@@ -3,21 +3,11 @@
 import { useMemo, useState } from "react";
 import type { Activity, Dependency, SortField, SortDir } from "@/types";
 import { ActivityRow } from "./ActivityRow";
-import { StatusBadge } from "./StatusBadge";
+import { statusClass } from "@/lib/utils";
 
 interface Props {
   activities: Activity[];
   dependencies: Dependency[];
-}
-
-function filterActivities(activities: Activity[], query: string) {
-  if (!query) return activities;
-  const q = query.toLowerCase();
-  return activities.filter(
-    (a) =>
-      a.description.toLowerCase().includes(q) ||
-      (a.trade_partner_name?.toLowerCase().includes(q) ?? false)
-  );
 }
 
 function sortActivities(activities: Activity[], field: SortField, dir: SortDir) {
@@ -49,6 +39,7 @@ export function ListView({ activities, dependencies }: Props) {
   const [query, setQuery] = useState("");
   const [sortField, setSortField] = useState<SortField>("current_start_date");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set());
 
   const activityMap = useMemo(
     () => new Map(activities.map((a) => [a.jsa_rid, a])),
@@ -75,16 +66,34 @@ export function ListView({ activities, dependencies }: Props) {
     return m;
   }, [dependencies]);
 
-  const filtered = useMemo(
-    () => sortActivities(filterActivities(activities, query), sortField, sortDir),
-    [activities, query, sortField, sortDir]
-  );
-
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const a of activities) counts[a.status] = (counts[a.status] ?? 0) + 1;
     return counts;
   }, [activities]);
+
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    let result = activities;
+    if (hiddenStatuses.size > 0)
+      result = result.filter((a) => !hiddenStatuses.has(a.status));
+    if (q)
+      result = result.filter(
+        (a) =>
+          a.description.toLowerCase().includes(q) ||
+          (a.trade_partner_name?.toLowerCase().includes(q) ?? false)
+      );
+    return sortActivities(result, sortField, sortDir);
+  }, [activities, query, sortField, sortDir, hiddenStatuses]);
+
+  function toggleStatus(status: string) {
+    setHiddenStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      return next;
+    });
+  }
 
   function toggleSort(field: SortField) {
     if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -96,15 +105,18 @@ export function ListView({ activities, dependencies }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Summary */}
+      {/* Summary + status filter */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-medium">{activities.length} activities</span>
         <span className="text-gray-400">—</span>
         {Object.entries(statusCounts).map(([status, count]) => (
-          <span key={status} className="flex items-center gap-1">
-            <StatusBadge status={status} />
-            <span className="text-gray-500">{count}</span>
-          </span>
+          <button
+            key={status}
+            onClick={() => toggleStatus(status)}
+            className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition ${statusClass(status)} ${hiddenStatuses.has(status) ? "opacity-30 line-through" : "hover:opacity-80"}`}
+          >
+            {status} <span className="font-normal">{count}</span>
+          </button>
         ))}
       </div>
 

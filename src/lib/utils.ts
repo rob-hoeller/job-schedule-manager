@@ -16,3 +16,24 @@ export const STATUS_STYLES: Record<string, string> = {
 export function statusClass(status: string) {
   return STATUS_STYLES[status] ?? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
 }
+
+/** Calculate workday drift between two date strings (positive = forward in time) */
+export function dayDrift(original: string | null, current: string | null): number | null {
+  if (!original || !current) return null;
+  const a = new Date(original);
+  const b = new Date(current);
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
+  const diff = Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
+  return diff === 0 ? null : diff;
+}
+
+/** Format drift as a colored string component props */
+export function driftClass(drift: number | null): string {
+  if (drift === null) return "";
+  return drift > 0 ? "text-red-500" : "text-green-500";
+}
+
+export function driftLabel(drift: number | null): string {
+  if (drift === null) return "";
+  return drift > 0 ? `+${drift}d` : `${drift}d`;
+}

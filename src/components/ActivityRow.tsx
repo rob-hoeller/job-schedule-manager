@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Activity, Dependency } from "@/types";
 import { StatusBadge } from "./StatusBadge";
-import { formatDate } from "@/lib/utils";
+import { formatDate, dayDrift, driftClass, driftLabel } from "@/lib/utils";
 
 interface Props {
   activity: Activity;
@@ -12,11 +12,17 @@ interface Props {
   activityMap: Map<number, Activity>;
 }
 
-function datesChanged(a: Activity) {
-  return (
-    a.original_start_date !== a.current_start_date ||
-    a.original_end_date !== a.current_end_date
-  );
+function Drift({ original, current }: { original: string | null; current: string | null }) {
+  const drift = dayDrift(original, current);
+  if (drift === null) return null;
+  return <span className={`ml-1 text-xs font-medium ${driftClass(drift)}`}>{driftLabel(drift)}</span>;
+}
+
+function DurationDrift({ original, current }: { original: number | null; current: number | null }) {
+  if (original == null || current == null || original === current) return null;
+  const diff = current - original;
+  const cls = diff > 0 ? "text-red-500" : "text-green-500";
+  return <span className={`ml-1 text-xs font-medium ${cls}`}>{diff > 0 ? "+" : ""}{diff}d</span>;
 }
 
 function DepList({
@@ -50,7 +56,6 @@ function DepList({
 
 export function ActivityRow({ activity: a, predecessors, successors, activityMap }: Props) {
   const [open, setOpen] = useState(false);
-  const shifted = datesChanged(a);
 
   return (
     <>
@@ -68,12 +73,16 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
         <td className="px-3 py-2.5"><StatusBadge status={a.status} /></td>
         <td className="hidden px-3 py-2.5 text-sm md:table-cell">
           {formatDate(a.current_start_date)}
-          {shifted && (
-            <span className="ml-1 text-xs text-amber-500" title={`Was ${formatDate(a.original_start_date)}`}>⚠</span>
-          )}
+          <Drift original={a.original_start_date} current={a.current_start_date} />
         </td>
-        <td className="hidden px-3 py-2.5 text-sm md:table-cell">{formatDate(a.current_end_date)}</td>
-        <td className="hidden px-3 py-2.5 text-sm text-center lg:table-cell">{a.current_duration ?? "—"}</td>
+        <td className="hidden px-3 py-2.5 text-sm md:table-cell">
+          {formatDate(a.current_end_date)}
+          <Drift original={a.original_end_date} current={a.current_end_date} />
+        </td>
+        <td className="hidden px-3 py-2.5 text-sm text-center lg:table-cell">
+          {a.current_duration ?? "—"}
+          <DurationDrift original={a.original_duration} current={a.current_duration} />
+        </td>
       </tr>
       {open && (
         <tr className="border-b border-gray-100 dark:border-gray-800">
@@ -83,15 +92,19 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
               <p><span className="text-gray-500">Trade: </span>{a.trade_partner_name ?? "—"}</p>
             </div>
             <div className="mb-3 space-y-1 text-sm md:hidden">
-              <p><span className="text-gray-500">Start: </span>{formatDate(a.current_start_date)}</p>
-              <p><span className="text-gray-500">End: </span>{formatDate(a.current_end_date)}</p>
-              <p><span className="text-gray-500">Duration: </span>{a.current_duration ?? "—"} days</p>
-            </div>
-            {shifted && (
-              <p className="mb-2 text-xs text-amber-600 dark:text-amber-400">
-                Original: {formatDate(a.original_start_date)} → {formatDate(a.original_end_date)} ({a.original_duration}d)
+              <p>
+                <span className="text-gray-500">Start: </span>{formatDate(a.current_start_date)}
+                <Drift original={a.original_start_date} current={a.current_start_date} />
               </p>
-            )}
+              <p>
+                <span className="text-gray-500">End: </span>{formatDate(a.current_end_date)}
+                <Drift original={a.original_end_date} current={a.current_end_date} />
+              </p>
+              <p>
+                <span className="text-gray-500">Duration: </span>{a.current_duration ?? "—"} days
+                <DurationDrift original={a.original_duration} current={a.current_duration} />
+              </p>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Predecessors</p>
