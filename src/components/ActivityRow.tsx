@@ -22,7 +22,15 @@ function DurationDrift({ original, current }: { original: number | null; current
   if (original == null || current == null || original === current) return null;
   const diff = current - original;
   const cls = diff > 0 ? "text-red-500" : "text-green-500";
-  return <span className={`ml-1 text-xs font-medium ${cls}`}>{diff > 0 ? "+" : ""}{diff}d</span>;
+  return <span className={`ml-1 text-xs font-medium ${cls}`}>{diff > 0 ? "+" : ""}{diff}</span>;
+}
+
+function hasDateChanges(a: Activity) {
+  return (
+    a.original_start_date !== a.current_start_date ||
+    a.original_end_date !== a.current_end_date ||
+    a.original_duration !== a.current_duration
+  );
 }
 
 function DepList({
@@ -43,10 +51,10 @@ function DepList({
           <li key={d.job_schedule_activity_dependency_id} className="text-xs">
             <span className="font-medium">{d.dependency_type}</span>
             {d.lag_days !== 0 && (
-              <span className="text-gray-500"> ({d.lag_days > 0 ? "+" : ""}{d.lag_days}d)</span>
+              <span className="text-gray-500"> ({d.lag_days > 0 ? "+" : ""}{d.lag_days})</span>
             )}
             {" — "}
-            <span>{linked?.description ?? `RID ${d[labelRid]}`}</span>
+            <span>{linked?.description ?? `Activity ${d[labelRid]}`}</span>
           </li>
         );
       })}
@@ -56,6 +64,7 @@ function DepList({
 
 export function ActivityRow({ activity: a, predecessors, successors, activityMap }: Props) {
   const [open, setOpen] = useState(false);
+  const changed = hasDateChanges(a);
 
   return (
     <>
@@ -105,6 +114,23 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
                 <DurationDrift original={a.original_duration} current={a.current_duration} />
               </p>
             </div>
+            {/* Original dates if changed */}
+            {changed && (
+              <div className="mb-3 rounded border border-gray-200 bg-white/50 px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-800/50">
+                <p className="mb-1 font-semibold uppercase tracking-wide text-gray-500">Original Schedule</p>
+                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                  {a.original_start_date !== a.current_start_date && (
+                    <span><span className="text-gray-500">Start: </span>{formatDate(a.original_start_date)}</span>
+                  )}
+                  {a.original_end_date !== a.current_end_date && (
+                    <span><span className="text-gray-500">End: </span>{formatDate(a.original_end_date)}</span>
+                  )}
+                  {a.original_duration !== a.current_duration && (
+                    <span><span className="text-gray-500">Duration: </span>{a.original_duration} days</span>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Predecessors</p>

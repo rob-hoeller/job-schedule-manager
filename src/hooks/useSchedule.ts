@@ -4,6 +4,25 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Activity, Dependency } from "@/types";
 
+async function fetchAll<T>(table: string, column: string, value: number): Promise<T[]> {
+  const rows: T[] = [];
+  const pageSize = 1000;
+  let from = 0;
+  let done = false;
+  while (!done) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .eq(column, value)
+      .range(from, from + pageSize - 1);
+    if (error) throw new Error(error.message);
+    rows.push(...(data as T[]));
+    done = (data?.length ?? 0) < pageSize;
+    from += pageSize;
+  }
+  return rows;
+}
+
 export function useSchedule(scheduleRid: number | null) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [dependencies, setDependencies] = useState<Dependency[]>([]);
@@ -21,24 +40,16 @@ export function useSchedule(scheduleRid: number | null) {
     setError(null);
 
     Promise.all([
-      supabase
-        .from("job_schedule_activities")
-        .select("*")
-        .eq("schedule_rid", scheduleRid)
-        .order("current_start_date"),
-      supabase
-        .from("job_schedule_activity_dependencies")
-        .select("*")
-        .eq("schedule_rid", scheduleRid),
-    ]).then(([actRes, depRes]) => {
-      if (actRes.error) setError(actRes.error.message);
-      else setActivities(actRes.data ?? []);
-
-      if (depRes.error) setError(depRes.error.message);
-      else setDependencies(depRes.data ?? []);
-
-      setLoading(false);
-    });
+      fetchAll<Activity>("job_schedule_activities", "schedule_rid", scheduleRid),
+      fetchAll<Dependency>("job_schedule_activity_dependencies", "schedule_rid", scheduleRid),
+    ])
+      .then(([acts, deps]) => {
+        acts.sort((a, b) => (a.current_start_date ?? "").localeCompare(b.current_start_date ?? ""));
+        setActivities(acts);
+        setDependencies(deps);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, [scheduleRid]);
 
   return { activities, dependencies, loading, error };

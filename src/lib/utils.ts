@@ -35,5 +35,5 @@ export function driftClass(drift: number | null): string {
 
 export function driftLabel(drift: number | null): string {
   if (drift === null) return "";
-  return drift > 0 ? `+${drift}d` : `${drift}d`;
+  return drift > 0 ? `+${drift}` : `${drift}`;
 }
