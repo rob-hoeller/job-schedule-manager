@@ -160,44 +160,55 @@ function OverflowPopup({
   );
 }
 
-/* ── mobile 3-day view ── */
+/* ── mobile scrollable day list ── */
 function MobileView({
-  anchorDate,
   calendarDays,
   dateActivities,
-  onPrev,
-  onNext,
-  onToday,
+  activities,
   onSelectActivity,
 }: {
-  anchorDate: Date;
   calendarDays: Map<string, CalendarDay>;
   dateActivities: Map<string, Activity[]>;
-  onPrev: () => void;
-  onNext: () => void;
-  onToday: () => void;
+  activities: Activity[];
   onSelectActivity: (a: Activity) => void;
 }) {
-  const today = new Date();
-  const days = [anchorDate, addDays(anchorDate, 1), addDays(anchorDate, 2)];
+  const today = useMemo(() => new Date(), []);
+
+  /* Build day list from today through last activity date */
+  const days = useMemo(() => {
+    let lastDate = new Date(today);
+    for (const a of activities) {
+      if (a.current_end_date) {
+        const d = new Date(a.current_end_date);
+        if (d > lastDate) lastDate = d;
+      }
+    }
+    const result: Date[] = [];
+    const cursor = new Date(today);
+    while (cursor <= lastDate) {
+      result.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return result;
+  }, [activities, today]);
+
+  /* Only render days that have activities (plus today always) */
+  const visibleDays = useMemo(() => {
+    return days.filter((d) => {
+      if (sameDay(d, today)) return true;
+      return (dateActivities.get(toKey(d))?.length ?? 0) > 0;
+    });
+  }, [days, dateActivities, today]);
 
   return (
-    <div className="space-y-3">
-      {/* Nav */}
-      <div className="flex items-center justify-between">
-        <button onClick={onPrev} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">←</button>
-        <button onClick={onToday} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">Today</button>
-        <button onClick={onNext} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">→</button>
-      </div>
-
-      {/* Day cards */}
-      {days.map((date) => {
+    <div className="space-y-2">
+      {visibleDays.map((date) => {
         const key = toKey(date);
         const cd = calendarDays.get(key);
         const isToday = sameDay(date, today);
         const isOffDay = cd ? cd.is_workday === 0 : (date.getDay() === 0 || date.getDay() === 6);
         const acts = dateActivities.get(key) ?? [];
-        const dayLabel = date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+        const dayLabel = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 
         return (
           <div
@@ -205,7 +216,9 @@ function MobileView({
             className={`rounded-lg border p-3 ${isToday ? "border-blue-500 ring-2 ring-blue-500/20" : "border-gray-200 dark:border-gray-800"} ${isOffDay ? "bg-gray-50 dark:bg-gray-900/60" : "bg-white dark:bg-gray-950"}`}
           >
             <div className="mb-2 flex items-center justify-between">
-              <span className={`text-sm font-semibold ${isToday ? "text-blue-600 dark:text-blue-400" : ""}`}>{dayLabel}</span>
+              <span className={`text-sm font-semibold ${isToday ? "text-blue-600 dark:text-blue-400" : ""}`}>
+                {isToday ? `Today — ${dayLabel}` : dayLabel}
+              </span>
               {cd?.description && (
                 <span className="text-xs text-orange-500 dark:text-orange-400">{cd.description}</span>
               )}
@@ -243,7 +256,6 @@ export function CalendarView({ activities, dependencies, calendarDays }: Props) 
   const [month, setMonth] = useState(today.getMonth());
   const [selected, setSelected] = useState<Activity | null>(null);
   const [overflowDay, setOverflowDay] = useState<Date | null>(null);
-  const [mobileAnchor, setMobileAnchor] = useState(today);
 
   const activityMap = useMemo(
     () => new Map(activities.map((a) => [a.jsa_rid, a])),
@@ -310,22 +322,18 @@ export function CalendarView({ activities, dependencies, calendarDays }: Props) 
   function goToday() {
     setYear(today.getFullYear());
     setMonth(today.getMonth());
-    setMobileAnchor(today);
   }
 
   const monthLabel = new Date(year, month).toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
   return (
     <div className="space-y-4">
-      {/* ── Mobile: 3-day view ── */}
+      {/* ── Mobile: scrollable day list ── */}
       <div className="sm:hidden">
         <MobileView
-          anchorDate={mobileAnchor}
           calendarDays={calendarDays}
           dateActivities={dateActivities}
-          onPrev={() => setMobileAnchor(addDays(mobileAnchor, -1))}
-          onNext={() => setMobileAnchor(addDays(mobileAnchor, 1))}
-          onToday={() => setMobileAnchor(today)}
+          activities={activities}
           onSelectActivity={setSelected}
         />
       </div>
