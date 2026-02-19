@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { JobSelector } from "@/components/JobSelector";
+import { JobDetails } from "@/components/JobDetails";
 import { ListView } from "@/components/ListView";
 import { CalendarView } from "@/components/CalendarView";
 import { ViewTabs } from "@/components/ViewTabs";
@@ -16,6 +17,11 @@ export default function Home() {
     job?.schedule_rid ?? null,
   );
   const { days: calendarDays } = useCalendarDays(2026);
+
+  const settlement = useMemo(
+    () => activities.find((a) => a.description === "Settlement") ?? null,
+    [activities],
+  );
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -34,7 +40,9 @@ export default function Home() {
       </div>
 
       {job && (
-        <div className="mt-8">
+        <div className="mt-4 space-y-6">
+          <JobDetails job={job} settlement={settlement} />
+
           {loading && <p className="text-sm text-gray-500">Loading schedule…</p>}
           {error && <p className="text-sm text-red-500">Error: {error}</p>}
           {!loading && !error && view === "list" && (

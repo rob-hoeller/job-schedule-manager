@@ -31,7 +31,16 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+/** Calculate which day number this date is within an activity span (1-based) */
+function activityDayNum(activity: Activity, dateKey: string): number {
+  if (!activity.current_start_date) return 1;
+  const start = new Date(activity.current_start_date);
+  const current = new Date(dateKey);
+  return Math.round((current.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+}
+
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const VISIBLE_BARS = 3;
 
 interface Props {
   activities: Activity[];
@@ -107,12 +116,134 @@ function DetailPopup({
   );
 }
 
+/* ── overflow popup ("+N more") ── */
+function OverflowPopup({
+  date,
+  activities: acts,
+  onSelect,
+  onClose,
+}: {
+  date: Date;
+  activities: Activity[];
+  onSelect: (a: Activity) => void;
+  onClose: () => void;
+}) {
+  const dateKey = toKey(date);
+  const label = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="mx-4 max-h-[60vh] w-full max-w-sm overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-gray-700 dark:bg-gray-900"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold">{label} — {acts.length} activities</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
+        </div>
+        <div className="space-y-1">
+          {acts.map((a) => {
+            const dayNum = activityDayNum(a, dateKey);
+            const dayTag = dayNum > 1 ? ` - Day ${dayNum}` : "";
+            return (
+              <button
+                key={a.job_schedule_activity_id}
+                onClick={() => { onClose(); onSelect(a); }}
+                className={`block w-full truncate rounded px-2 py-1.5 text-left text-xs text-white transition hover:opacity-80 ${barColor(a.status)}`}
+              >
+                {a.description}{dayTag}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── mobile 3-day view ── */
+function MobileView({
+  anchorDate,
+  calendarDays,
+  dateActivities,
+  onPrev,
+  onNext,
+  onToday,
+  onSelectActivity,
+}: {
+  anchorDate: Date;
+  calendarDays: Map<string, CalendarDay>;
+  dateActivities: Map<string, Activity[]>;
+  onPrev: () => void;
+  onNext: () => void;
+  onToday: () => void;
+  onSelectActivity: (a: Activity) => void;
+}) {
+  const today = new Date();
+  const days = [anchorDate, addDays(anchorDate, 1), addDays(anchorDate, 2)];
+
+  return (
+    <div className="space-y-3">
+      {/* Nav */}
+      <div className="flex items-center justify-between">
+        <button onClick={onPrev} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">←</button>
+        <button onClick={onToday} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">Today</button>
+        <button onClick={onNext} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">→</button>
+      </div>
+
+      {/* Day cards */}
+      {days.map((date) => {
+        const key = toKey(date);
+        const cd = calendarDays.get(key);
+        const isToday = sameDay(date, today);
+        const isOffDay = cd ? cd.is_workday === 0 : (date.getDay() === 0 || date.getDay() === 6);
+        const acts = dateActivities.get(key) ?? [];
+        const dayLabel = date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+
+        return (
+          <div
+            key={key}
+            className={`rounded-lg border p-3 ${isToday ? "border-blue-500 ring-2 ring-blue-500/20" : "border-gray-200 dark:border-gray-800"} ${isOffDay ? "bg-gray-50 dark:bg-gray-900/60" : "bg-white dark:bg-gray-950"}`}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className={`text-sm font-semibold ${isToday ? "text-blue-600 dark:text-blue-400" : ""}`}>{dayLabel}</span>
+              {cd?.description && (
+                <span className="text-xs text-orange-500 dark:text-orange-400">{cd.description}</span>
+              )}
+            </div>
+            {acts.length === 0 ? (
+              <p className="text-xs text-gray-400 italic">No activities</p>
+            ) : (
+              <div className="space-y-1">
+                {acts.map((a) => {
+                  const dayNum = activityDayNum(a, key);
+                  const dayTag = dayNum > 1 ? ` - Day ${dayNum}` : "";
+                  return (
+                    <button
+                      key={a.job_schedule_activity_id}
+                      onClick={() => onSelectActivity(a)}
+                      className={`block w-full truncate rounded px-2 py-1.5 text-left text-xs text-white transition hover:opacity-80 ${barColor(a.status)}`}
+                    >
+                      {a.description}{dayTag}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ── main component ── */
 export function CalendarView({ activities, dependencies, calendarDays }: Props) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [selected, setSelected] = useState<Activity | null>(null);
+  const [overflowDay, setOverflowDay] = useState<Date | null>(null);
+  const [mobileAnchor, setMobileAnchor] = useState(today);
 
   const activityMap = useMemo(
     () => new Map(activities.map((a) => [a.jsa_rid, a])),
@@ -142,10 +273,9 @@ export function CalendarView({ activities, dependencies, calendarDays }: Props) 
   /* Build calendar grid cells */
   const cells = useMemo(() => {
     const first = startOfMonth(year, month);
-    const startDow = first.getDay(); // 0=Sun
+    const startDow = first.getDay();
     const gridStart = addDays(first, -startDow);
     const result: Date[] = [];
-    // Always 6 rows (42 cells) for consistent grid
     for (let i = 0; i < 42; i++) result.push(addDays(gridStart, i));
     return result;
   }, [year, month]);
@@ -180,86 +310,103 @@ export function CalendarView({ activities, dependencies, calendarDays }: Props) 
   function goToday() {
     setYear(today.getFullYear());
     setMonth(today.getMonth());
+    setMobileAnchor(today);
   }
 
   const monthLabel = new Date(year, month).toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
   return (
     <div className="space-y-4">
-      {/* Nav */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button onClick={prevMonth} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">←</button>
-          <h2 className="min-w-[180px] text-center text-lg font-semibold">{monthLabel}</h2>
-          <button onClick={nextMonth} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">→</button>
-        </div>
-        <button onClick={goToday} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">Today</button>
+      {/* ── Mobile: 3-day view ── */}
+      <div className="sm:hidden">
+        <MobileView
+          anchorDate={mobileAnchor}
+          calendarDays={calendarDays}
+          dateActivities={dateActivities}
+          onPrev={() => setMobileAnchor(addDays(mobileAnchor, -1))}
+          onNext={() => setMobileAnchor(addDays(mobileAnchor, 1))}
+          onToday={() => setMobileAnchor(today)}
+          onSelectActivity={setSelected}
+        />
       </div>
 
-      {/* Grid */}
-      <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
-        {/* Weekday headers */}
-        <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/50">
-          {WEEKDAYS.map((d) => (
-            <div key={d} className="px-1 py-2 text-center text-xs font-semibold uppercase text-gray-500">{d}</div>
-          ))}
+      {/* ── Desktop: Full month grid ── */}
+      <div className="hidden sm:block">
+        {/* Nav */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button onClick={prevMonth} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">←</button>
+            <h2 className="min-w-[180px] text-center text-lg font-semibold">{monthLabel}</h2>
+            <button onClick={nextMonth} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">→</button>
+          </div>
+          <button onClick={goToday} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">Today</button>
         </div>
 
-        {/* Day cells */}
-        <div className="grid grid-cols-7">
-          {cells.map((date) => {
-            const key = toKey(date);
-            const cd = calendarDays.get(key);
-            const isCurrentMonth = date.getMonth() === month;
-            const isToday = sameDay(date, today);
-            const isOffDay = cd ? cd.is_workday === 0 : (date.getDay() === 0 || date.getDay() === 6);
-            const acts = dateActivities.get(key) ?? [];
+        {/* Grid */}
+        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
+          <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/50">
+            {WEEKDAYS.map((d) => (
+              <div key={d} className="px-1 py-2 text-center text-xs font-semibold uppercase text-gray-500">{d}</div>
+            ))}
+          </div>
 
-            return (
-              <div
-                key={key}
-                className={`min-h-[80px] border-b border-r border-gray-100 p-1 dark:border-gray-800 sm:min-h-[100px]
-                  ${!isCurrentMonth ? "bg-gray-50/50 dark:bg-gray-950/30" : ""}
-                  ${isOffDay && isCurrentMonth ? "bg-gray-100/60 dark:bg-gray-900/60" : ""}
-                  ${isToday ? "ring-2 ring-inset ring-blue-500" : ""}
-                `}
-              >
-                {/* Day number + holiday */}
-                <div className="flex items-start justify-between">
-                  <span className={`text-xs font-medium ${isCurrentMonth ? "" : "text-gray-400 dark:text-gray-600"} ${isToday ? "rounded-full bg-blue-500 px-1.5 py-0.5 text-white" : ""}`}>
-                    {date.getDate()}
-                  </span>
-                  {cd?.description && isCurrentMonth && (
-                    <span className="max-w-[80%] truncate text-[10px] text-orange-500 dark:text-orange-400" title={cd.description}>
-                      {cd.description}
+          <div className="grid grid-cols-7">
+            {cells.map((date) => {
+              const key = toKey(date);
+              const cd = calendarDays.get(key);
+              const isCurrentMonth = date.getMonth() === month;
+              const isToday = sameDay(date, today);
+              const isOffDay = cd ? cd.is_workday === 0 : (date.getDay() === 0 || date.getDay() === 6);
+              const acts = dateActivities.get(key) ?? [];
+
+              return (
+                <div
+                  key={key}
+                  className={`min-h-[100px] border-b border-r border-gray-100 p-1 dark:border-gray-800
+                    ${!isCurrentMonth ? "bg-gray-50/50 dark:bg-gray-950/30" : ""}
+                    ${isOffDay && isCurrentMonth ? "bg-gray-100/60 dark:bg-gray-900/60" : ""}
+                    ${isToday ? "ring-2 ring-inset ring-blue-500" : ""}
+                  `}
+                >
+                  <div className="flex items-start justify-between">
+                    <span className={`text-xs font-medium ${isCurrentMonth ? "" : "text-gray-400 dark:text-gray-600"} ${isToday ? "rounded-full bg-blue-500 px-1.5 py-0.5 text-white" : ""}`}>
+                      {date.getDate()}
                     </span>
-                  )}
-                </div>
+                    {cd?.description && isCurrentMonth && (
+                      <span className="max-w-[80%] truncate text-[10px] text-orange-500 dark:text-orange-400" title={cd.description}>
+                        {cd.description}
+                      </span>
+                    )}
+                  </div>
 
-                {/* Activity bars */}
-                <div className="mt-0.5 space-y-0.5">
-                  {acts.slice(0, 3).map((a) => {
-                    const isStart = a.current_start_date === key;
-                    return (
+                  <div className="mt-0.5 space-y-0.5">
+                    {acts.slice(0, VISIBLE_BARS).map((a) => {
+                      const dayNum = activityDayNum(a, key);
+                      const dayTag = dayNum > 1 ? ` - Day ${dayNum}` : "";
+                      return (
+                        <button
+                          key={a.job_schedule_activity_id}
+                          onClick={() => setSelected(a)}
+                          className={`block w-full truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight text-white transition hover:opacity-80 ${barColor(a.status)}`}
+                          title={`${a.description}${dayTag}`}
+                        >
+                          {a.description}{dayTag}
+                        </button>
+                      );
+                    })}
+                    {acts.length > VISIBLE_BARS && (
                       <button
-                        key={a.job_schedule_activity_id}
-                        onClick={() => setSelected(a)}
-                        className={`block w-full truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight text-white transition hover:opacity-80 ${barColor(a.status)}
-                          ${isStart ? "rounded-l font-medium" : ""}
-                        `}
-                        title={a.description}
+                        onClick={() => setOverflowDay(date)}
+                        className="block w-full text-left text-[10px] font-medium text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                       >
-                        {isStart ? a.description : ""}
+                        +{acts.length - VISIBLE_BARS} more
                       </button>
-                    );
-                  })}
-                  {acts.length > 3 && (
-                    <span className="block text-[10px] text-gray-500">+{acts.length - 3} more</span>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -270,6 +417,16 @@ export function CalendarView({ activities, dependencies, calendarDays }: Props) 
         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-gray-400/80" /> Completed</span>
         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-gray-100 dark:bg-gray-900" /> Non-workday</span>
       </div>
+
+      {/* Overflow popup */}
+      {overflowDay && (
+        <OverflowPopup
+          date={overflowDay}
+          activities={dateActivities.get(toKey(overflowDay)) ?? []}
+          onSelect={setSelected}
+          onClose={() => setOverflowDay(null)}
+        />
+      )}
 
       {/* Detail popup */}
       {selected && (
