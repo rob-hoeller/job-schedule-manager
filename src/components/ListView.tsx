@@ -63,7 +63,7 @@ export function ListView({ activities, dependencies }: Props) {
   const lateCount = useMemo(() => {
     const today = todayStr();
     return activities.filter(
-      (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today,
+      (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date <= today,
     ).length;
   }, [activities]);
 
@@ -74,7 +74,7 @@ export function ListView({ activities, dependencies }: Props) {
 
     if (showLate) {
       result = result.filter(
-        (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today,
+        (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date <= today,
       );
     } else if (hiddenStatuses.size > 0) {
       result = result.filter((a) => !hiddenStatuses.has(a.status));
