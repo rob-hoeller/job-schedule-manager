@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { Activity, Dependency } from "@/types";
 import { ActivityRow } from "./ActivityRow";
 import { statusClass } from "@/lib/utils";
@@ -20,14 +20,16 @@ const COL_HEADERS: { label: string; className: string }[] = [
   { label: "Days", className: "hidden lg:table-cell text-center" },
 ];
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export function ListView({ activities, dependencies }: Props) {
   const [query, setQuery] = useState("");
   const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set(["Approved"]));
   const [showLate, setShowLate] = useState(false);
+  const [today, setToday] = useState<string>("");
+
+  // Get client-side current date
+  useEffect(() => {
+    setToday(new Date().toISOString().slice(0, 10));
+  }, []);
 
   const activityMap = useMemo(
     () => new Map(activities.map((a) => [a.jsa_rid, a])),
@@ -61,18 +63,17 @@ export function ListView({ activities, dependencies }: Props) {
   }, [activities]);
 
   const lateCount = useMemo(() => {
-    const today = todayStr();
+    if (!today) return 0;
     return activities.filter(
       (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today,
     ).length;
-  }, [activities]);
+  }, [activities, today]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
-    const today = todayStr();
     let result = activities;
 
-    if (showLate) {
+    if (showLate && today) {
       result = result.filter(
         (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today,
       );
@@ -90,7 +91,7 @@ export function ListView({ activities, dependencies }: Props) {
     return [...result].sort((a, b) =>
       (a.current_start_date ?? "").localeCompare(b.current_start_date ?? ""),
     );
-  }, [activities, query, hiddenStatuses, showLate]);
+  }, [activities, query, hiddenStatuses, showLate, today]);
 
   function toggleStatus(status: string) {
     if (showLate) setShowLate(false);

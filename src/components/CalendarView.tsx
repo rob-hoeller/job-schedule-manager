@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Dependency, CalendarDay } from "@/types";
+import { parseLocalDate } from "@/lib/utils";
 import { ActivityDetailPopup } from "./ActivityDetailPopup";
 
 /* ── colour map for activity bars ── */
@@ -33,8 +34,8 @@ function sameDay(a: Date, b: Date) {
 /** Calculate which day number this date is within an activity span (1-based) */
 function activityDayNum(activity: Activity, dateKey: string): number {
   if (!activity.current_start_date) return 1;
-  const start = new Date(activity.current_start_date);
-  const current = new Date(dateKey);
+  const start = parseLocalDate(activity.current_start_date);
+  const current = parseLocalDate(dateKey);
   return Math.round((current.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 }
 
@@ -115,11 +116,11 @@ function MobileView({
     let lastDate = new Date(today);
     for (const a of activities) {
       if (a.current_start_date) {
-        const d = new Date(a.current_start_date);
+        const d = parseLocalDate(a.current_start_date);
         if (d < firstDate) firstDate = d;
       }
       if (a.current_end_date) {
-        const d = new Date(a.current_end_date);
+        const d = parseLocalDate(a.current_end_date);
         if (d > lastDate) lastDate = d;
       }
     }
@@ -245,8 +246,8 @@ export function CalendarView({ activities, dependencies, calendarDays }: Props) 
     const m = new Map<string, Activity[]>();
     for (const a of activities) {
       if (!a.current_start_date) continue;
-      const start = new Date(a.current_start_date);
-      const end = a.current_end_date ? new Date(a.current_end_date) : start;
+      const start = parseLocalDate(a.current_start_date);
+      const end = a.current_end_date ? parseLocalDate(a.current_end_date) : start;
       const cursor = new Date(start);
       while (cursor <= end) {
         const key = toKey(cursor);

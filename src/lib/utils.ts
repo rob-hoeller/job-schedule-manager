@@ -1,6 +1,15 @@
+/**
+ * Parse date string (YYYY-MM-DD) as local date to avoid UTC timezone shift.
+ * Use this instead of `new Date(dateString)` to prevent dates shifting by timezone offset.
+ */
+export function parseLocalDate(d: string): Date {
+  const [year, month, day] = d.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 export function formatDate(d: string | null) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
+  return parseLocalDate(d).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -12,7 +21,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 /** Format date, omitting year if it matches the current year */
 export function formatDateCompact(d: string | null) {
   if (!d) return "—";
-  const date = new Date(d);
+  const date = parseLocalDate(d);
   if (date.getFullYear() === CURRENT_YEAR) {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
@@ -38,8 +47,8 @@ export function statusClass(status: string) {
 /** Calculate workday drift between two date strings (positive = forward in time) */
 export function dayDrift(original: string | null, current: string | null): number | null {
   if (!original || !current) return null;
-  const a = new Date(original);
-  const b = new Date(current);
+  const a = parseLocalDate(original);
+  const b = parseLocalDate(current);
   if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
   const diff = Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
   return diff === 0 ? null : diff;
