@@ -67,6 +67,12 @@ export function ListView({ activities, dependencies }: Props) {
     const lateActivities = activities.filter(
       (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today,
     );
+    
+    // Check the 4 suspected missing activities
+    const suspectedMissing = activities.filter(a => 
+      ["Water Lateral", "Sewer Lateral", "Install Gas Lateral", "Install Water Meter/Sewer Frame"].includes(a.description)
+    );
+    
     // Debug logging
     console.log("Late count calculation:", {
       today,
@@ -77,6 +83,14 @@ export function ListView({ activities, dependencies }: Props) {
         status: a.status,
         endDate: a.current_end_date,
         comparison: `${a.current_end_date} < ${today}`
+      })),
+      suspectedMissing: suspectedMissing.map(a => ({
+        desc: a.description,
+        status: a.status,
+        currentEndDate: a.current_end_date,
+        isNull: a.current_end_date === null,
+        isLessThan: a.current_end_date ? a.current_end_date < today : null,
+        statusCheck: a.status !== "Approved"
       }))
     });
     return lateActivities.length;
