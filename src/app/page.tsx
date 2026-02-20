@@ -46,22 +46,26 @@ export default function Home() {
 
           {loading && <p className="text-sm text-gray-500">Loading schedule…</p>}
           {error && <p className="text-sm text-red-500">Error: {error}</p>}
-          {!loading && !error && view === "list" && (
-            <ListView activities={activities} dependencies={dependencies} />
-          )}
-          {!loading && !error && view === "calendar" && (
-            <CalendarView
-              activities={activities}
-              dependencies={dependencies}
-              calendarDays={calendarDays}
-            />
-          )}
-          {!loading && !error && view === "gantt" && (
-            <GanttView
-              activities={activities}
-              dependencies={dependencies}
-              calendarDays={calendarDays}
-            />
+          {!loading && !error && (
+            <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 280px)" }}>
+              {view === "list" && (
+                <ListView activities={activities} dependencies={dependencies} />
+              )}
+              {view === "calendar" && (
+                <CalendarView
+                  activities={activities}
+                  dependencies={dependencies}
+                  calendarDays={calendarDays}
+                />
+              )}
+              {view === "gantt" && (
+                <GanttView
+                  activities={activities}
+                  dependencies={dependencies}
+                  calendarDays={calendarDays}
+                />
+              )}
+            </div>
           )}
         </div>
       )}

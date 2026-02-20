@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Dependency, CalendarDay } from "@/types";
-import { StatusBadge } from "./StatusBadge";
-import { formatDate, dayDrift, driftClass, driftLabel } from "@/lib/utils";
+import { ActivityDetailPopup } from "./ActivityDetailPopup";
 
 /* ── constants ── */
 const ROW_H = 32;
@@ -36,87 +35,11 @@ interface Props {
   calendarDays: Map<string, CalendarDay>;
 }
 
-/* ── detail tooltip ── */
-function Tooltip({
-  activity: a,
-  x,
-  y,
-  predecessors,
-  successors,
-  activityMap,
-  onClose,
-}: {
-  activity: Activity;
-  x: number;
-  y: number;
-  predecessors: Dependency[];
-  successors: Dependency[];
-  activityMap: Map<number, Activity>;
-  onClose: () => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  /* close on outside click */
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
-
-  const startDrift = dayDrift(a.original_start_date, a.current_start_date);
-
-  return (
-    <div
-      ref={ref}
-      className="pointer-events-auto absolute z-50 w-72 rounded-lg border border-gray-200 bg-white p-3 text-sm shadow-xl dark:border-gray-700 dark:bg-gray-900"
-      style={{ left: x, top: y + 8 }}
-    >
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <span className="font-semibold leading-tight">{a.description}</span>
-        <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600">✕</button>
-      </div>
-      <div className="space-y-1 text-xs">
-        <p><span className="text-gray-500">Trade: </span>{a.trade_partner_name ?? "—"}</p>
-        <p><span className="text-gray-500">Status: </span><StatusBadge status={a.status} /></p>
-        <p>
-          <span className="text-gray-500">Start: </span>{formatDate(a.current_start_date)}
-          {startDrift !== null && <span className={`ml-1 font-medium ${driftClass(startDrift)}`}>{driftLabel(startDrift)}</span>}
-        </p>
-        <p><span className="text-gray-500">End: </span>{formatDate(a.current_end_date)}</p>
-        <p><span className="text-gray-500">Duration: </span>{a.current_duration ?? "—"} days</p>
-      </div>
-      {(predecessors.length > 0 || successors.length > 0) && (
-        <div className="mt-2 grid grid-cols-2 gap-2 border-t border-gray-100 pt-2 dark:border-gray-800">
-          <div>
-            <p className="mb-0.5 text-[10px] font-semibold uppercase text-gray-400">Pred</p>
-            {predecessors.filter((d) => activityMap.has(d.predecessor_jsa_rid)).length === 0 ? (
-              <span className="text-[10px] text-gray-400 italic">None</span>
-            ) : (
-              predecessors.filter((d) => activityMap.has(d.predecessor_jsa_rid)).map((d) => (
-                <p key={d.job_schedule_activity_dependency_id} className="truncate text-[10px]">
-                  {d.dependency_type} — {activityMap.get(d.predecessor_jsa_rid)!.description}
-                </p>
-              ))
-            )}
-          </div>
-          <div>
-            <p className="mb-0.5 text-[10px] font-semibold uppercase text-gray-400">Succ</p>
-            {successors.filter((d) => activityMap.has(d.successor_jsa_rid)).length === 0 ? (
-              <span className="text-[10px] text-gray-400 italic">None</span>
-            ) : (
-              successors.filter((d) => activityMap.has(d.successor_jsa_rid)).map((d) => (
-                <p key={d.job_schedule_activity_dependency_id} className="truncate text-[10px]">
-                  {d.dependency_type} — {activityMap.get(d.successor_jsa_rid)!.description}
-                </p>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+/** Generate abbreviation from activity name: "Install Silt Fence" → "ISF" */
+function abbreviate(name: string): string {
+  const words = name.split(/[\s/&-]+/).filter(Boolean);
+  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
+  return words.map((w) => w[0]).join("").toUpperCase();
 }
 
 /* ── main component ── */
@@ -124,7 +47,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
   const chartRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   const [zoomIdx, setZoomIdx] = useState(1);
-  const [tooltip, setTooltip] = useState<{ activity: Activity; x: number; y: number } | null>(null);
+  const [selected, setSelected] = useState<Activity | null>(null);
   const [highlightedRow, setHighlightedRow] = useState<number | null>(null);
 
   const colW = ZOOM_LEVELS[zoomIdx];
@@ -212,10 +135,8 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
     }
   }, [todayOffset]);
 
-  function handleBarClick(a: Activity, e: React.MouseEvent) {
-    const rect = (e.currentTarget as HTMLElement).closest(".gantt-chart-area")?.getBoundingClientRect();
-    if (!rect) return;
-    setTooltip({ activity: a, x: e.clientX - rect.left + 10, y: e.clientY - rect.top });
+  function handleBarClick(a: Activity) {
+    setSelected(a);
   }
 
   /* Mobile: tap activity in list to scroll to its bar */
@@ -294,19 +215,9 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
             chartH={chartH}
             todayOffset={todayOffset}
             highlightedRow={highlightedRow}
+            isMobile
             onBarClick={handleBarClick}
           />
-          {tooltip && (
-            <Tooltip
-              activity={tooltip.activity}
-              x={tooltip.x}
-              y={tooltip.y}
-              predecessors={predMap.get(tooltip.activity.jsa_rid) ?? []}
-              successors={succMap.get(tooltip.activity.jsa_rid) ?? []}
-              activityMap={activityMap}
-              onClose={() => setTooltip(null)}
-            />
-          )}
         </div>
       </div>
 
@@ -358,19 +269,19 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
             highlightedRow={highlightedRow}
             onBarClick={handleBarClick}
           />
-          {tooltip && (
-            <Tooltip
-              activity={tooltip.activity}
-              x={tooltip.x}
-              y={tooltip.y}
-              predecessors={predMap.get(tooltip.activity.jsa_rid) ?? []}
-              successors={succMap.get(tooltip.activity.jsa_rid) ?? []}
-              activityMap={activityMap}
-              onClose={() => setTooltip(null)}
-            />
-          )}
         </div>
       </div>
+
+      {/* Detail popup */}
+      {selected && (
+        <ActivityDetailPopup
+          activity={selected}
+          predecessors={predMap.get(selected.jsa_rid) ?? []}
+          successors={succMap.get(selected.jsa_rid) ?? []}
+          activityMap={activityMap}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   );
 }
@@ -389,6 +300,7 @@ function GanttChart({
   chartH,
   todayOffset,
   highlightedRow,
+  isMobile = false,
   onBarClick,
 }: {
   sorted: Activity[];
@@ -403,7 +315,8 @@ function GanttChart({
   chartH: number;
   todayOffset: number | null;
   highlightedRow: number | null;
-  onBarClick: (a: Activity, e: React.MouseEvent) => void;
+  isMobile?: boolean;
+  onBarClick: (a: Activity) => void;
 }) {
   const svgH = chartH + HEADER_H;
 
@@ -544,7 +457,7 @@ function GanttChart({
           <g
             key={a.job_schedule_activity_id}
             className="cursor-pointer"
-            onClick={(e) => onBarClick(a, e)}
+            onClick={() => onBarClick(a)}
           >
             <rect
               x={x}
@@ -555,15 +468,17 @@ function GanttChart({
               fill={fill(a.status)}
               className="transition-colors hover:brightness-90"
             />
-            {/* Label on bar if wide enough */}
-            {w > 50 && (
+            {/* Label on bar */}
+            {(isMobile ? w > 16 : w > 50) && (
               <text
                 x={x + 4}
                 y={y + BAR_H / 2 + 1}
                 dominantBaseline="middle"
                 className="pointer-events-none fill-white text-[9px] font-medium"
               >
-                {a.description.length > w / 6 ? a.description.slice(0, Math.floor(w / 6)) + "…" : a.description}
+                {isMobile
+                  ? abbreviate(a.description)
+                  : a.description.length > w / 6 ? a.description.slice(0, Math.floor(w / 6)) + "…" : a.description}
               </text>
             )}
           </g>
