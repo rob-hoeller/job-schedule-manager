@@ -276,6 +276,14 @@ export function CalendarView({ activities, dependencies, calendarDays }: Props) 
 
   return (
     <div className="space-y-4">
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-blue-500/80" /> Released</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-green-500/80" /> Approved</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-gray-400/80" /> Completed</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-gray-100 dark:bg-gray-900" /> Non-workday</span>
+      </div>
+
       {/* ── Mobile: scrollable day list ── */}
       <div className="sm:hidden">
         <MobileView
@@ -364,14 +372,6 @@ export function CalendarView({ activities, dependencies, calendarDays }: Props) 
             })}
           </div>
         </div>
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-blue-500/80" /> Released</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-green-500/80" /> Approved</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-gray-400/80" /> Completed</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-gray-100 dark:bg-gray-900" /> Non-workday</span>
       </div>
 
       {/* Overflow popup */}

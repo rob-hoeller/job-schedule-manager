@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Activity, Dependency } from "@/types";
 import { StatusBadge } from "./StatusBadge";
-import { formatDate, dayDrift, driftClass, driftLabel, STATUS_DOT } from "@/lib/utils";
+import { formatDate, formatDateCompact, dayDrift, driftClass, driftLabel, STATUS_DOT } from "@/lib/utils";
 
 interface Props {
   activity: Activity;
@@ -78,11 +78,11 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
         </td>
         {/* Mobile start date */}
         <td className="px-3 py-2.5 text-xs md:hidden">
-          {formatDate(a.current_start_date)}
+          {formatDateCompact(a.current_start_date)}
         </td>
         <td className="hidden px-3 py-2.5 text-sm sm:table-cell">{a.trade_partner_name ?? "—"}</td>
         {/* Status: dot on mobile, badge on desktop */}
-        <td className="px-3 py-2.5">
+        <td className="px-3 py-2.5 text-center">
           <span className="md:hidden">
             <span className={`inline-block h-2.5 w-2.5 rounded-full ${STATUS_DOT[a.status] ?? "bg-gray-400"}`} title={a.status} />
           </span>
@@ -91,11 +91,11 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
           </span>
         </td>
         <td className="hidden px-3 py-2.5 text-sm md:table-cell">
-          {formatDate(a.current_start_date)}
+          {formatDateCompact(a.current_start_date)}
           <Drift original={a.original_start_date} current={a.current_start_date} />
         </td>
         <td className="hidden px-3 py-2.5 text-sm md:table-cell">
-          {formatDate(a.current_end_date)}
+          {formatDateCompact(a.current_end_date)}
           <Drift original={a.original_end_date} current={a.current_end_date} />
         </td>
         <td className="hidden px-3 py-2.5 text-sm text-center lg:table-cell">

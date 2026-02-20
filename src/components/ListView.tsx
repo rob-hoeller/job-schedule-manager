@@ -30,7 +30,7 @@ const COL_HEADERS: { label: string; className: string }[] = [
   { label: "Activity", className: "" },
   { label: "Start", className: "md:hidden" },
   { label: "Trade Partner", className: "hidden sm:table-cell" },
-  { label: "Status", className: "" },
+  { label: "Status", className: "text-center" },
   { label: "Start", className: "hidden md:table-cell" },
   { label: "End", className: "hidden md:table-cell" },
   { label: "Days", className: "hidden lg:table-cell text-center" },

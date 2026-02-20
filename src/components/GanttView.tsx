@@ -49,7 +49,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
   const labelRef = useRef<HTMLDivElement>(null);
   const [zoomIdx, setZoomIdx] = useState(2);
   const [selected, setSelected] = useState<Activity | null>(null);
-  const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set(["Approved"]));
+  const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set());
   const highlightedRow: number | null = null;
 
   const colW = ZOOM_LEVELS[zoomIdx];
