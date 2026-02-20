@@ -109,6 +109,13 @@ export function ListView({ activities, dependencies }: Props) {
 
   return (
     <div className="flex h-full flex-col gap-3">
+      {/* Debug: Show current date */}
+      {today && (
+        <div className="rounded border border-blue-300 bg-blue-50 px-2 py-1 text-xs text-blue-700 dark:border-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+          Debug: Today = {today} | Late count = {lateCount}
+        </div>
+      )}
+      
       {/* Status filters */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {Object.entries(statusCounts).map(([status, count]) => (
