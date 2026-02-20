@@ -11,7 +11,6 @@ const BAR_H = 20;
 const BAR_Y_OFFSET = (ROW_H - BAR_H) / 2;
 const HEADER_H = 48;
 const LABEL_W = 280;
-const ZOOM_LEVELS = [24, 32, 44, 60, 80];
 
 /* ── colour fills for SVG bars (darker shades for white text legibility) ── */
 const FILL: Record<string, string> = {
@@ -48,12 +47,11 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
   const chartRef = useRef<HTMLDivElement>(null);
   const mobileChartRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
-  const [zoomIdx, setZoomIdx] = useState(2);
   const [selected, setSelected] = useState<Activity | null>(null);
   const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set());
   const highlightedRow: number | null = null;
 
-  const colW = ZOOM_LEVELS[zoomIdx];
+  const colW = 44; // Day-level zoom
 
   const activityMap = useMemo(
     () => new Map(activities.map((a) => [a.jsa_rid, a])),
@@ -184,29 +182,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
 
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* Zoom controls */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500">Zoom:</span>
-        <button
-          onClick={() => setZoomIdx(Math.max(0, zoomIdx - 1))}
-          disabled={zoomIdx === 0}
-          className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-30 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-        >−</button>
-        <span className="w-16 text-center text-xs text-gray-500">
-          {colW <= 32 ? "Week" : colW <= 44 ? "Day" : "Detail"}
-        </span>
-        <button
-          onClick={() => setZoomIdx(Math.min(ZOOM_LEVELS.length - 1, zoomIdx + 1))}
-          disabled={zoomIdx === ZOOM_LEVELS.length - 1}
-          className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-30 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-        >+</button>
-        <button
-          onClick={scrollToToday}
-          className="ml-2 rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-        >Today</button>
-      </div>
-
-      {/* Status filters */}
+      {/* Status filters + Today */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {Object.entries(statusCounts).map(([status, count]) => (
           <button
@@ -217,6 +193,10 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
             {status} <span className="font-normal">{count}</span>
           </button>
         ))}
+        <button
+          onClick={scrollToToday}
+          className="rounded-full border border-gray-300 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+        >Today</button>
       </div>
 
       {/* ── Mobile: chart only ── */}
