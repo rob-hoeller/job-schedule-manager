@@ -134,7 +134,8 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
 
   /* Today line position */
   const todayOffset = useMemo(() => {
-    const today = new Date();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const today = parseLocalDate(todayStr);
     const off = daysBetween(startDate, today);
     return off >= 0 && off < totalDays ? off * colW + colW / 2 : null;
   }, [startDate, totalDays, colW]);
@@ -147,8 +148,8 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
   }, []);
 
   const scrollToToday = useCallback(() => {
-    const todayKey = toKey(new Date());
-    const firstIdx = sorted.findIndex((a) => (a.current_end_date ?? a.current_start_date ?? "") >= todayKey);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const firstIdx = sorted.findIndex((a) => (a.current_end_date ?? a.current_start_date ?? "") >= todayStr);
 
     for (const ref of [chartRef, mobileChartRef]) {
       if (!ref.current) continue;
@@ -362,9 +363,17 @@ function GanttChart({
       {dates.map((d, i) => {
         const isMonday = d.getDay() === 1;
         const isFirst = d.getDate() === 1;
-        if (!isMonday && !isFirst) return null;
+        
+        // Draw stronger lines for week starts and month starts
+        if (isMonday || isFirst) {
+          return (
+            <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-300 dark:stroke-gray-700" strokeWidth={1} />
+          );
+        }
+        
+        // Draw subtle lines for every day
         return (
-          <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-200 dark:stroke-gray-800" strokeWidth={0.5} />
+          <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-200/40 dark:stroke-gray-800/40" strokeWidth={0.5} />
         );
       })}
 
