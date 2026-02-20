@@ -191,8 +191,6 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
 
       {/* Status filters */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-medium">{sorted.length} activities</span>
-        <span className="text-gray-400">—</span>
         {Object.entries(statusCounts).map(([status, count]) => (
           <button
             key={status}

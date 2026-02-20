@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Activity, Dependency, SortField, SortDir } from "@/types";
+import type { Activity, Dependency } from "@/types";
 import { ActivityRow } from "./ActivityRow";
 import { statusClass } from "@/lib/utils";
 
@@ -10,41 +10,28 @@ interface Props {
   dependencies: Dependency[];
 }
 
-function sortActivities(activities: Activity[], field: SortField, dir: SortDir) {
-  return [...activities].sort((a, b) => {
-    const av = a[field] ?? "";
-    const bv = b[field] ?? "";
-    const cmp = String(av).localeCompare(String(bv));
-    return dir === "asc" ? cmp : -cmp;
-  });
-}
-
-const SORT_OPTIONS: { label: string; field: SortField }[] = [
-  { label: "Start Date", field: "current_start_date" },
-  { label: "Description", field: "description" },
-  { label: "Trade Partner", field: "trade_partner_name" },
-  { label: "Status", field: "status" },
-];
-
 const COL_HEADERS: { label: string; className: string }[] = [
   { label: "Activity", className: "" },
-  { label: "Start", className: "md:hidden" },
+  { label: "Start", className: "text-center md:hidden" },
   { label: "Trade Partner", className: "hidden sm:table-cell" },
   { label: "Status", className: "text-center" },
-  { label: "Start", className: "hidden md:table-cell" },
-  { label: "End", className: "hidden md:table-cell" },
+  { label: "Start", className: "hidden md:table-cell text-center" },
+  { label: "End", className: "hidden md:table-cell text-center" },
   { label: "Days", className: "hidden lg:table-cell text-center" },
 ];
 
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function ListView({ activities, dependencies }: Props) {
   const [query, setQuery] = useState("");
-  const [sortField, setSortField] = useState<SortField>("current_start_date");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set(["Approved"]));
+  const [showLate, setShowLate] = useState(false);
 
   const activityMap = useMemo(
     () => new Map(activities.map((a) => [a.jsa_rid, a])),
-    [activities]
+    [activities],
   );
 
   const predMap = useMemo(() => {
@@ -73,21 +60,40 @@ export function ListView({ activities, dependencies }: Props) {
     return counts;
   }, [activities]);
 
+  const lateCount = useMemo(() => {
+    const today = todayStr();
+    return activities.filter(
+      (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today,
+    ).length;
+  }, [activities]);
+
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
+    const today = todayStr();
     let result = activities;
-    if (hiddenStatuses.size > 0)
+
+    if (showLate) {
+      result = result.filter(
+        (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today,
+      );
+    } else if (hiddenStatuses.size > 0) {
       result = result.filter((a) => !hiddenStatuses.has(a.status));
+    }
+
     if (q)
       result = result.filter(
         (a) =>
           a.description.toLowerCase().includes(q) ||
-          (a.trade_partner_name?.toLowerCase().includes(q) ?? false)
+          (a.trade_partner_name?.toLowerCase().includes(q) ?? false),
       );
-    return sortActivities(result, sortField, sortDir);
-  }, [activities, query, sortField, sortDir, hiddenStatuses]);
+
+    return [...result].sort((a, b) =>
+      (a.current_start_date ?? "").localeCompare(b.current_start_date ?? ""),
+    );
+  }, [activities, query, hiddenStatuses, showLate]);
 
   function toggleStatus(status: string) {
+    if (showLate) setShowLate(false);
     setHiddenStatuses((prev) => {
       const next = new Set(prev);
       if (next.has(status)) next.delete(status);
@@ -96,65 +102,49 @@ export function ListView({ activities, dependencies }: Props) {
     });
   }
 
-  function toggleSort(field: SortField) {
-    if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortField(field);
-      setSortDir("asc");
-    }
+  function toggleLate() {
+    setShowLate((prev) => !prev);
   }
 
   return (
     <div className="space-y-4">
-      {/* Summary + status filter */}
+      {/* Status filters */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-medium">{activities.length} activities</span>
-        <span className="text-gray-400">—</span>
         {Object.entries(statusCounts).map(([status, count]) => (
           <button
             key={status}
             onClick={() => toggleStatus(status)}
-            className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition ${statusClass(status)} ${hiddenStatuses.has(status) ? "opacity-30 line-through" : "hover:opacity-80"}`}
+            className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition ${statusClass(status)} ${showLate ? "opacity-30" : hiddenStatuses.has(status) ? "opacity-30 line-through" : "hover:opacity-80"}`}
           >
             {status} <span className="font-normal">{count}</span>
           </button>
         ))}
+        {lateCount > 0 && (
+          <button
+            onClick={toggleLate}
+            className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 ${showLate ? "ring-2 ring-red-500/40 hover:opacity-80" : "opacity-30 hover:opacity-60"}`}
+          >
+            Late <span className="font-normal">{lateCount}</span>
+          </button>
+        )}
       </div>
 
-      {/* Controls */}
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          type="text"
-          placeholder="Filter by activity or trade partner…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-900"
-        />
-        <select
-          value={sortField}
-          onChange={(e) => toggleSort(e.target.value as SortField)}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900"
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.field} value={o.field}>{o.label}</option>
-          ))}
-        </select>
-        <button
-          onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-          title={`Sort ${sortDir === "asc" ? "descending" : "ascending"}`}
-        >
-          {sortDir === "asc" ? "↑" : "↓"}
-        </button>
-      </div>
+      {/* Search */}
+      <input
+        type="text"
+        placeholder="Filter by activity or trade partner…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-900"
+      />
 
       {/* Table */}
       <div className="overflow-auto rounded-lg border border-gray-200 dark:border-gray-800" style={{ maxHeight: "calc(100vh - 340px)" }}>
         <table className="w-full text-left">
           <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
             <tr>
-              {COL_HEADERS.map((h) => (
-                <th key={h.label} className={`px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 ${h.className}`}>
+              {COL_HEADERS.map((h, i) => (
+                <th key={`${h.label}-${i}`} className={`px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 ${h.className}`}>
                   {h.label}
                 </th>
               ))}

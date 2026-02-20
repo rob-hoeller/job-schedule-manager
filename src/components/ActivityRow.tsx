@@ -77,7 +77,7 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
           </div>
         </td>
         {/* Mobile start date */}
-        <td className="px-3 py-2.5 text-xs md:hidden">
+        <td className="px-3 py-2.5 text-center text-xs md:hidden">
           {formatDateCompact(a.current_start_date)}
         </td>
         <td className="hidden px-3 py-2.5 text-sm sm:table-cell">{a.trade_partner_name ?? "—"}</td>
@@ -90,11 +90,11 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
             <StatusBadge status={a.status} />
           </span>
         </td>
-        <td className="hidden px-3 py-2.5 text-sm md:table-cell">
+        <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell">
           {formatDateCompact(a.current_start_date)}
           <Drift original={a.original_start_date} current={a.current_start_date} />
         </td>
-        <td className="hidden px-3 py-2.5 text-sm md:table-cell">
+        <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell">
           {formatDateCompact(a.current_end_date)}
           <Drift original={a.original_end_date} current={a.current_end_date} />
         </td>
