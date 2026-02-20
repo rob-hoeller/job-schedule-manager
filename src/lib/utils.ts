@@ -13,6 +13,12 @@ export const STATUS_STYLES: Record<string, string> = {
   Completed: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
 };
 
+export const STATUS_DOT: Record<string, string> = {
+  Released: "bg-blue-500",
+  Approved: "bg-green-500",
+  Completed: "bg-gray-400",
+};
+
 export function statusClass(status: string) {
   return STATUS_STYLES[status] ?? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
 }

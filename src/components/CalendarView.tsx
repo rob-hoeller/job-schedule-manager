@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Dependency, CalendarDay } from "@/types";
 import { ActivityDetailPopup } from "./ActivityDetailPopup";
 
@@ -107,18 +107,24 @@ function MobileView({
   onSelectActivity: (a: Activity) => void;
 }) {
   const today = useMemo(() => new Date(), []);
+  const todayRef = useRef<HTMLDivElement>(null);
 
-  /* Build day list from today through last activity date */
+  /* Build day list from first activity through last activity date */
   const days = useMemo(() => {
+    let firstDate = new Date(today);
     let lastDate = new Date(today);
     for (const a of activities) {
+      if (a.current_start_date) {
+        const d = new Date(a.current_start_date);
+        if (d < firstDate) firstDate = d;
+      }
       if (a.current_end_date) {
         const d = new Date(a.current_end_date);
         if (d > lastDate) lastDate = d;
       }
     }
     const result: Date[] = [];
-    const cursor = new Date(today);
+    const cursor = new Date(firstDate);
     while (cursor <= lastDate) {
       result.push(new Date(cursor));
       cursor.setDate(cursor.getDate() + 1);
@@ -134,8 +140,15 @@ function MobileView({
     });
   }, [days, dateActivities, today]);
 
+  /* Auto-scroll to today on mount */
+  useEffect(() => {
+    if (todayRef.current) {
+      todayRef.current.scrollIntoView({ block: "start" });
+    }
+  }, []);
+
   return (
-    <div className="space-y-2">
+    <div className="overflow-y-auto space-y-2" style={{ maxHeight: "calc(100vh - 340px)" }}>
       {visibleDays.map((date) => {
         const key = toKey(date);
         const cd = calendarDays.get(key);
@@ -147,6 +160,7 @@ function MobileView({
         return (
           <div
             key={key}
+            ref={isToday ? todayRef : undefined}
             className={`rounded-lg border p-3 ${isToday ? "border-blue-500 ring-2 ring-blue-500/20" : "border-gray-200 dark:border-gray-800"} ${isOffDay ? "bg-gray-50 dark:bg-gray-900/60" : "bg-white dark:bg-gray-950"}`}
           >
             <div className="mb-2 flex items-center justify-between">

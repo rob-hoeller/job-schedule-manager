@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Dependency, CalendarDay } from "@/types";
 import { ActivityDetailPopup } from "./ActivityDetailPopup";
+import { statusClass } from "@/lib/utils";
 
 /* ── constants ── */
 const ROW_H = 32;
@@ -12,11 +13,11 @@ const HEADER_H = 48;
 const LABEL_W = 280;
 const ZOOM_LEVELS = [24, 32, 44, 60, 80];
 
-/* ── colour fills for SVG bars ── */
+/* ── colour fills for SVG bars (darker shades for white text legibility) ── */
 const FILL: Record<string, string> = {
-  Released: "#3b82f6",
-  Approved: "#22c55e",
-  Completed: "#9ca3af",
+  Released: "#2563eb",
+  Approved: "#16a34a",
+  Completed: "#6b7280",
 };
 function fill(status: string) {
   return FILL[status] ?? "#9ca3af";
@@ -48,6 +49,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
   const labelRef = useRef<HTMLDivElement>(null);
   const [zoomIdx, setZoomIdx] = useState(2);
   const [selected, setSelected] = useState<Activity | null>(null);
+  const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set(["Approved"]));
   const highlightedRow: number | null = null;
 
   const colW = ZOOM_LEVELS[zoomIdx];
@@ -77,10 +79,27 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
     return m;
   }, [dependencies]);
 
-  /* Sorted activities */
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const a of activities) counts[a.status] = (counts[a.status] ?? 0) + 1;
+    return counts;
+  }, [activities]);
+
+  function toggleStatus(status: string) {
+    setHiddenStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      return next;
+    });
+  }
+
+  /* Sorted + filtered activities */
   const sorted = useMemo(
-    () => [...activities].sort((a, b) => (a.current_start_date ?? "").localeCompare(b.current_start_date ?? "")),
-    [activities],
+    () => [...activities]
+      .filter((a) => !hiddenStatuses.has(a.status))
+      .sort((a, b) => (a.current_start_date ?? "").localeCompare(b.current_start_date ?? "")),
+    [activities, hiddenStatuses],
   );
 
   /* Row index by jsa_rid */
@@ -128,12 +147,19 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
     }
   }, []);
 
-  /* Scroll to today on mount */
+  /* Scroll to today on mount — horizontal to today line, vertical to first activity on/after today */
   useEffect(() => {
-    if (todayOffset !== null && chartRef.current) {
+    if (!chartRef.current) return;
+    if (todayOffset !== null) {
       chartRef.current.scrollLeft = Math.max(0, todayOffset - chartRef.current.clientWidth / 3);
     }
-  }, [todayOffset]);
+    const todayStr = toKey(new Date());
+    const firstIdx = sorted.findIndex((a) => (a.current_end_date ?? a.current_start_date ?? "") >= todayStr);
+    if (firstIdx > 0) {
+      chartRef.current.scrollTop = firstIdx * ROW_H;
+      if (labelRef.current) labelRef.current.scrollTop = firstIdx * ROW_H;
+    }
+  }, [todayOffset, sorted]);
 
   function handleBarClick(a: Activity) {
     setSelected(a);
@@ -163,12 +189,19 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
         >+</button>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded" style={{ background: FILL.Released }} /> Released</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded" style={{ background: FILL.Approved }} /> Approved</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded" style={{ background: FILL.Completed }} /> Completed</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-gray-100 dark:bg-gray-800" /> Non-workday</span>
+      {/* Status filters */}
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-medium">{sorted.length} activities</span>
+        <span className="text-gray-400">—</span>
+        {Object.entries(statusCounts).map(([status, count]) => (
+          <button
+            key={status}
+            onClick={() => toggleStatus(status)}
+            className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition ${statusClass(status)} ${hiddenStatuses.has(status) ? "opacity-30 line-through" : "hover:opacity-80"}`}
+          >
+            {status} <span className="font-normal">{count}</span>
+          </button>
+        ))}
       </div>
 
       {/* ── Mobile: chart only ── */}

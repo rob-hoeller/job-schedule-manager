@@ -28,6 +28,7 @@ const SORT_OPTIONS: { label: string; field: SortField }[] = [
 
 const COL_HEADERS: { label: string; className: string }[] = [
   { label: "Activity", className: "" },
+  { label: "Start", className: "md:hidden" },
   { label: "Trade Partner", className: "hidden sm:table-cell" },
   { label: "Status", className: "" },
   { label: "Start", className: "hidden md:table-cell" },
@@ -39,7 +40,7 @@ export function ListView({ activities, dependencies }: Props) {
   const [query, setQuery] = useState("");
   const [sortField, setSortField] = useState<SortField>("current_start_date");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set());
+  const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set(["Approved"]));
 
   const activityMap = useMemo(
     () => new Map(activities.map((a) => [a.jsa_rid, a])),
