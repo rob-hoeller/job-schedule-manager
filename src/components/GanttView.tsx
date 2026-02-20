@@ -332,7 +332,6 @@ function GanttChart({
             const key = toKey(d);
             const cd = calendarDays.get(key);
             const isOffDay = cd ? cd.is_workday === 0 : (d.getDay() === 0 || d.getDay() === 6);
-            const isSunday = d.getDay() === 0; // Week starts Sunday
             const isFirst = d.getDate() === 1;
 
             return (
@@ -342,12 +341,12 @@ function GanttChart({
                     {d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                   </text>
                 )}
-                {(colW >= 44 || isSunday || isFirst) && (
+                {(colW >= 44 || isFirst) && (
                   <text x={x + colW / 2} y={HEADER_H - 6} textAnchor="middle" className={`text-[9px] ${isOffDay ? "fill-gray-400 dark:fill-gray-600" : "fill-gray-500 dark:fill-gray-400"}`}>
                     {colW >= 60 ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : d.getDate()}
                   </text>
                 )}
-                {(isSunday || isFirst) && (
+                {isFirst && (
                   <line x1={x} y1={0} x2={x} y2={HEADER_H} className="stroke-gray-200 dark:stroke-gray-800" strokeWidth={0.5} />
                 )}
               </g>
@@ -361,19 +360,18 @@ function GanttChart({
       <svg width={chartW} height={chartH} className="select-none">
       {/* ── Column separators ── */}
       {dates.map((d, i) => {
-        const isSunday = d.getDay() === 0; // Week starts Sunday
         const isFirst = d.getDate() === 1;
         
-        // Draw stronger lines for week starts (Sunday) and month starts
-        if (isSunday || isFirst) {
+        // Draw stronger lines for month starts only
+        if (isFirst) {
           return (
             <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-300 dark:stroke-gray-700" strokeWidth={1} />
           );
         }
         
-        // Draw subtle lines for every day (60% opacity)
+        // Draw day lines (80% opacity)
         return (
-          <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-200/60 dark:stroke-gray-800/60" strokeWidth={0.5} />
+          <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-200/80 dark:stroke-gray-800/80" strokeWidth={0.5} />
         );
       })}
 
@@ -449,13 +447,13 @@ function GanttChart({
               <path
                 d={path}
                 fill="none"
-                className="stroke-gray-400/50 dark:stroke-gray-600/50"
+                className="stroke-blue-500/70 dark:stroke-blue-400/70"
                 strokeWidth={1}
               />
               {/* Arrow head */}
               <polygon
                 points={`${toX},${toY} ${toX - 4},${toY - 3} ${toX - 4},${toY + 3}`}
-                className="fill-gray-400/50 dark:fill-gray-600/50"
+                className="fill-blue-500/70 dark:fill-blue-400/70"
               />
             </g>
           );
