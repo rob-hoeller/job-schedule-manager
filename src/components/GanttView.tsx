@@ -48,7 +48,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
   const labelRef = useRef<HTMLDivElement>(null);
   const [zoomIdx, setZoomIdx] = useState(1);
   const [selected, setSelected] = useState<Activity | null>(null);
-  const [highlightedRow, setHighlightedRow] = useState<number | null>(null);
+  const highlightedRow: number | null = null;
 
   const colW = ZOOM_LEVELS[zoomIdx];
 
@@ -139,17 +139,6 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
     setSelected(a);
   }
 
-  /* Mobile: tap activity in list to scroll to its bar */
-  function scrollToActivity(idx: number) {
-    setHighlightedRow(idx);
-    const a = sorted[idx];
-    if (!a.current_start_date || !chartRef.current) return;
-    const off = daysBetween(startDate, new Date(a.current_start_date));
-    chartRef.current.scrollLeft = Math.max(0, off * colW - 40);
-    chartRef.current.scrollTop = idx * ROW_H - chartRef.current.clientHeight / 3;
-    setTimeout(() => setHighlightedRow(null), 1500);
-  }
-
   if (sorted.length === 0) {
     return <p className="py-8 text-center text-sm text-gray-400">No activities to display.</p>;
   }
@@ -182,25 +171,13 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-gray-100 dark:bg-gray-800" /> Non-workday</span>
       </div>
 
-      {/* ── Mobile: activity list + scrollable chart ── */}
+      {/* ── Mobile: chart only ── */}
       <div className="sm:hidden">
-        <div className="mb-2 max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-800">
-          {sorted.map((a, i) => (
-            <button
-              key={a.job_schedule_activity_id}
-              onClick={() => scrollToActivity(i)}
-              className="flex w-full items-center gap-2 border-b border-gray-100 px-3 py-2 text-left text-xs transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900/50"
-            >
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: fill(a.status) }} />
-              <span className="truncate">{a.description}</span>
-            </button>
-          ))}
-        </div>
         <div
           ref={chartRef}
           onScroll={onChartScroll}
           className="gantt-chart-area relative overflow-auto rounded-lg border border-gray-200 dark:border-gray-800"
-          style={{ maxHeight: 400 }}
+          style={{ maxHeight: "100%" }}
         >
           <GanttChart
             sorted={sorted}
@@ -229,8 +206,8 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
           className="shrink-0 overflow-hidden border-r border-gray-200 dark:border-gray-800"
           style={{ width: LABEL_W }}
         >
-          {/* header spacer */}
-          <div className="flex items-end border-b border-gray-200 bg-gray-50 px-2 text-xs font-semibold text-gray-500 dark:border-gray-800 dark:bg-gray-900/50" style={{ height: HEADER_H }}>
+          {/* header — sticky to match chart header */}
+          <div className="sticky top-0 z-10 flex items-end border-b border-gray-200 bg-gray-50 px-2 text-xs font-semibold text-gray-500 dark:border-gray-800 dark:bg-gray-900/50" style={{ height: HEADER_H }}>
             Activity
           </div>
           <div style={{ height: chartH }} className="overflow-hidden">
@@ -252,7 +229,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
           ref={chartRef}
           onScroll={onChartScroll}
           className="gantt-chart-area relative flex-1 overflow-auto"
-          style={{ maxHeight: chartH + HEADER_H + 20 }}
+          style={{ maxHeight: "100%" }}
         >
           <GanttChart
             sorted={sorted}
@@ -318,44 +295,53 @@ function GanttChart({
   isMobile?: boolean;
   onBarClick: (a: Activity) => void;
 }) {
-  const svgH = chartH + HEADER_H;
-
   return (
-    <svg width={chartW} height={svgH} className="select-none">
-      {/* ── Header row: date labels ── */}
-      <g>
-        <rect x={0} y={0} width={chartW} height={HEADER_H} className="fill-gray-50 dark:fill-gray-900/50" />
-        {dates.map((d, i) => {
-          const x = i * colW;
-          const key = toKey(d);
-          const cd = calendarDays.get(key);
-          const isOffDay = cd ? cd.is_workday === 0 : (d.getDay() === 0 || d.getDay() === 6);
-          const isMonday = d.getDay() === 1;
-          const isFirst = d.getDate() === 1;
+    <div style={{ width: chartW }}>
+      {/* ── Sticky header ── */}
+      <div className="sticky top-0 z-10">
+        <svg width={chartW} height={HEADER_H} className="select-none">
+          <rect x={0} y={0} width={chartW} height={HEADER_H} className="fill-gray-50 dark:fill-gray-900/50" />
+          {dates.map((d, i) => {
+            const x = i * colW;
+            const key = toKey(d);
+            const cd = calendarDays.get(key);
+            const isOffDay = cd ? cd.is_workday === 0 : (d.getDay() === 0 || d.getDay() === 6);
+            const isMonday = d.getDay() === 1;
+            const isFirst = d.getDate() === 1;
 
-          return (
-            <g key={key}>
-              {/* Month label on 1st */}
-              {isFirst && (
-                <text x={x + 2} y={14} className="fill-gray-700 text-[10px] font-semibold dark:fill-gray-300">
-                  {d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
-                </text>
-              )}
-              {/* Day number — show on wider zoom or Mondays/1st */}
-              {(colW >= 44 || isMonday || isFirst) && (
-                <text x={x + colW / 2} y={HEADER_H - 6} textAnchor="middle" className={`text-[9px] ${isOffDay ? "fill-gray-400 dark:fill-gray-600" : "fill-gray-500 dark:fill-gray-400"}`}>
-                  {colW >= 60 ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : d.getDate()}
-                </text>
-              )}
-              {/* Column separator */}
-              {(isMonday || isFirst) && (
-                <line x1={x} y1={0} x2={x} y2={svgH} className="stroke-gray-200 dark:stroke-gray-800" strokeWidth={0.5} />
-              )}
-            </g>
-          );
-        })}
-        <line x1={0} y1={HEADER_H} x2={chartW} y2={HEADER_H} className="stroke-gray-200 dark:stroke-gray-800" strokeWidth={1} />
-      </g>
+            return (
+              <g key={key}>
+                {isFirst && (
+                  <text x={x + 2} y={14} className="fill-gray-700 text-[10px] font-semibold dark:fill-gray-300">
+                    {d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                  </text>
+                )}
+                {(colW >= 44 || isMonday || isFirst) && (
+                  <text x={x + colW / 2} y={HEADER_H - 6} textAnchor="middle" className={`text-[9px] ${isOffDay ? "fill-gray-400 dark:fill-gray-600" : "fill-gray-500 dark:fill-gray-400"}`}>
+                    {colW >= 60 ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : d.getDate()}
+                  </text>
+                )}
+                {(isMonday || isFirst) && (
+                  <line x1={x} y1={0} x2={x} y2={HEADER_H} className="stroke-gray-200 dark:stroke-gray-800" strokeWidth={0.5} />
+                )}
+              </g>
+            );
+          })}
+          <line x1={0} y1={HEADER_H - 1} x2={chartW} y2={HEADER_H - 1} className="stroke-gray-200 dark:stroke-gray-800" strokeWidth={1} />
+        </svg>
+      </div>
+
+      {/* ── Chart body ── */}
+      <svg width={chartW} height={chartH} className="select-none">
+      {/* ── Column separators ── */}
+      {dates.map((d, i) => {
+        const isMonday = d.getDay() === 1;
+        const isFirst = d.getDate() === 1;
+        if (!isMonday && !isFirst) return null;
+        return (
+          <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-200 dark:stroke-gray-800" strokeWidth={0.5} />
+        );
+      })}
 
       {/* ── Non-workday bands ── */}
       {dates.map((d, i) => {
@@ -367,7 +353,7 @@ function GanttChart({
           <rect
             key={`off-${key}`}
             x={i * colW}
-            y={HEADER_H}
+            y={0}
             width={colW}
             height={chartH}
             className="fill-gray-100/60 dark:fill-gray-800/30"
@@ -380,7 +366,7 @@ function GanttChart({
         <rect
           key={`row-${i}`}
           x={0}
-          y={HEADER_H + i * ROW_H}
+          y={i * ROW_H}
           width={chartW}
           height={ROW_H}
           className={
@@ -414,8 +400,8 @@ function GanttChart({
             fromX = predStart * colW; // start of predecessor (SS)
           }
           const toX = succStart * colW;
-          const fromY = HEADER_H + predIdx * ROW_H + ROW_H / 2;
-          const toY = HEADER_H + succIdx * ROW_H + ROW_H / 2;
+          const fromY = predIdx * ROW_H + ROW_H / 2;
+          const toY = succIdx * ROW_H + ROW_H / 2;
 
           // Path: horizontal out, then vertical, then horizontal to target
           const midX = d.dependency_type === "FS"
@@ -451,7 +437,7 @@ function GanttChart({
         const span = daysBetween(sd, ed) + 1;
         const x = startOff * colW;
         const w = Math.max(span * colW - 2, 4);
-        const y = HEADER_H + i * ROW_H + BAR_Y_OFFSET;
+        const y = i * ROW_H + BAR_Y_OFFSET;
 
         return (
           <g
@@ -490,18 +476,19 @@ function GanttChart({
         <g>
           <line
             x1={todayOffset}
-            y1={HEADER_H}
+            y1={0}
             x2={todayOffset}
-            y2={svgH}
+            y2={chartH}
             stroke="#ef4444"
             strokeWidth={2}
             strokeDasharray="4 2"
           />
-          <text x={todayOffset + 3} y={HEADER_H + 12} className="fill-red-500 text-[9px] font-semibold">
+          <text x={todayOffset + 3} y={12} className="fill-red-500 text-[9px] font-semibold">
             Today
           </text>
         </g>
       )}
     </svg>
+    </div>
   );
 }
