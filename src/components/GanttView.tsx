@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Dependency, CalendarDay } from "@/types";
 import { ActivityDetailPopup } from "./ActivityDetailPopup";
-import { statusClass } from "@/lib/utils";
+import { statusClass, parseLocalDate } from "@/lib/utils";
 
 /* ── constants ── */
 const ROW_H = 32;
@@ -117,8 +117,8 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
       if (a.current_start_date && a.current_start_date > max) max = a.current_start_date;
     }
     if (min > max) return { startDate: new Date(), totalDays: 0, dates: [] };
-    const sd = new Date(min);
-    const ed = new Date(max);
+    const sd = parseLocalDate(min);
+    const ed = parseLocalDate(max);
     const total = daysBetween(sd, ed) + 1;
     const ds: Date[] = [];
     for (let i = 0; i < total; i++) {
@@ -414,9 +414,9 @@ function GanttChart({
           const succ = activityMap.get(d.successor_jsa_rid);
           if (!pred || !succ) return null;
 
-          const predStart = pred.current_start_date ? daysBetween(startDate, new Date(pred.current_start_date)) : 0;
-          const predEnd = pred.current_end_date ? daysBetween(startDate, new Date(pred.current_end_date)) + 1 : predStart + 1;
-          const succStart = succ.current_start_date ? daysBetween(startDate, new Date(succ.current_start_date)) : 0;
+          const predStart = pred.current_start_date ? daysBetween(startDate, parseLocalDate(pred.current_start_date)) : 0;
+          const predEnd = pred.current_end_date ? daysBetween(startDate, parseLocalDate(pred.current_end_date)) + 1 : predStart + 1;
+          const succStart = succ.current_start_date ? daysBetween(startDate, parseLocalDate(succ.current_start_date)) : 0;
 
           let fromX: number;
           if (d.dependency_type === "FS") {
@@ -456,8 +456,8 @@ function GanttChart({
       {/* ── Activity bars ── */}
       {sorted.map((a, i) => {
         if (!a.current_start_date) return null;
-        const sd = new Date(a.current_start_date);
-        const ed = a.current_end_date ? new Date(a.current_end_date) : sd;
+        const sd = parseLocalDate(a.current_start_date);
+        const ed = a.current_end_date ? parseLocalDate(a.current_end_date) : sd;
         const startOff = daysBetween(startDate, sd);
         const span = daysBetween(sd, ed) + 1;
         const x = startOff * colW;

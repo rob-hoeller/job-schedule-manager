@@ -64,36 +64,9 @@ export function ListView({ activities, dependencies }: Props) {
 
   const lateCount = useMemo(() => {
     if (!today) return 0;
-    const lateActivities = activities.filter(
+    return activities.filter(
       (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today,
-    );
-    
-    // Check the 4 suspected missing activities
-    const suspectedMissing = activities.filter(a => 
-      ["Water Lateral", "Sewer Lateral", "Install Gas Lateral", "Install Water Meter/Sewer Frame"].includes(a.description)
-    );
-    
-    // Debug logging
-    console.log("Late count calculation:", {
-      today,
-      totalActivities: activities.length,
-      lateActivities: lateActivities.length,
-      lateDetails: lateActivities.map(a => ({
-        desc: a.description,
-        status: a.status,
-        endDate: a.current_end_date,
-        comparison: `${a.current_end_date} < ${today}`
-      })),
-      suspectedMissing: suspectedMissing.map(a => ({
-        desc: a.description,
-        status: a.status,
-        currentEndDate: a.current_end_date,
-        isNull: a.current_end_date === null,
-        isLessThan: a.current_end_date ? a.current_end_date < today : null,
-        statusCheck: a.status !== "Approved"
-      }))
-    });
-    return lateActivities.length;
+    ).length;
   }, [activities, today]);
 
   const filtered = useMemo(() => {
@@ -136,19 +109,6 @@ export function ListView({ activities, dependencies }: Props) {
 
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* Debug: Show current date */}
-      {today && (
-        <div className="rounded border border-blue-300 bg-blue-50 px-2 py-1 text-xs text-blue-700 dark:border-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
-          <div>Debug: Today = {today} | Total activities = {activities.length} | Late count = {lateCount}</div>
-          <div className="mt-1 text-[10px]">
-            Late activities: {activities
-              .filter((a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today)
-              .map(a => `${a.description.slice(0, 20)}... (${a.current_end_date})`)
-              .join(", ")}
-          </div>
-        </div>
-      )}
-      
       {/* Status filters */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {Object.entries(statusCounts).map(([status, count]) => (
