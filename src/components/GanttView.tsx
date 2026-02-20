@@ -332,7 +332,7 @@ function GanttChart({
             const key = toKey(d);
             const cd = calendarDays.get(key);
             const isOffDay = cd ? cd.is_workday === 0 : (d.getDay() === 0 || d.getDay() === 6);
-            const isMonday = d.getDay() === 1;
+            const isSunday = d.getDay() === 0; // Week starts Sunday
             const isFirst = d.getDate() === 1;
 
             return (
@@ -342,12 +342,12 @@ function GanttChart({
                     {d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                   </text>
                 )}
-                {(colW >= 44 || isMonday || isFirst) && (
+                {(colW >= 44 || isSunday || isFirst) && (
                   <text x={x + colW / 2} y={HEADER_H - 6} textAnchor="middle" className={`text-[9px] ${isOffDay ? "fill-gray-400 dark:fill-gray-600" : "fill-gray-500 dark:fill-gray-400"}`}>
                     {colW >= 60 ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : d.getDate()}
                   </text>
                 )}
-                {(isMonday || isFirst) && (
+                {(isSunday || isFirst) && (
                   <line x1={x} y1={0} x2={x} y2={HEADER_H} className="stroke-gray-200 dark:stroke-gray-800" strokeWidth={0.5} />
                 )}
               </g>
@@ -361,19 +361,19 @@ function GanttChart({
       <svg width={chartW} height={chartH} className="select-none">
       {/* ── Column separators ── */}
       {dates.map((d, i) => {
-        const isMonday = d.getDay() === 1;
+        const isSunday = d.getDay() === 0; // Week starts Sunday
         const isFirst = d.getDate() === 1;
         
-        // Draw stronger lines for week starts and month starts
-        if (isMonday || isFirst) {
+        // Draw stronger lines for week starts (Sunday) and month starts
+        if (isSunday || isFirst) {
           return (
             <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-300 dark:stroke-gray-700" strokeWidth={1} />
           );
         }
         
-        // Draw subtle lines for every day
+        // Draw subtle lines for every day (60% opacity)
         return (
-          <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-200/40 dark:stroke-gray-800/40" strokeWidth={0.5} />
+          <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-200/60 dark:stroke-gray-800/60" strokeWidth={0.5} />
         );
       })}
 
