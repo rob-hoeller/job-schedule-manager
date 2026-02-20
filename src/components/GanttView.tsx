@@ -202,15 +202,14 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
 
       {/* Dependency legend */}
       <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
+        <span className="font-medium">Dependency:</span>
         <div className="flex items-center gap-1.5">
           <div className="h-2 w-2 rounded-full bg-blue-500/70 dark:bg-blue-400/70" />
-          <span className="hidden sm:inline">Finish → Start</span>
-          <span className="sm:hidden">FS</span>
+          <span>Finish → Start</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="h-2 w-2 rounded-full bg-orange-600/70 dark:bg-orange-400/70" />
-          <span className="hidden sm:inline">Start → Start</span>
-          <span className="sm:hidden">SS</span>
+          <span>Start → Start</span>
         </div>
       </div>
 
