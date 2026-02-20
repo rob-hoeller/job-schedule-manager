@@ -177,7 +177,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
           ref={chartRef}
           onScroll={onChartScroll}
           className="gantt-chart-area relative overflow-auto rounded-lg border border-gray-200 dark:border-gray-800"
-          style={{ maxHeight: "100%" }}
+          style={{ maxHeight: "calc(100vh - 340px)" }}
         >
           <GanttChart
             sorted={sorted}
@@ -199,7 +199,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
       </div>
 
       {/* ── Desktop: split panel ── */}
-      <div className="hidden sm:flex">
+      <div className="hidden overflow-hidden rounded-lg border border-gray-200 sm:flex dark:border-gray-800" style={{ maxHeight: "calc(100vh - 340px)" }}>
         {/* Left: activity labels */}
         <div
           ref={labelRef}
@@ -207,10 +207,10 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
           style={{ width: LABEL_W }}
         >
           {/* header — sticky to match chart header */}
-          <div className="sticky top-0 z-10 flex items-end border-b border-gray-200 bg-gray-50 px-2 text-xs font-semibold text-gray-500 dark:border-gray-800 dark:bg-gray-900/50" style={{ height: HEADER_H }}>
+          <div className="flex items-end border-b border-gray-200 bg-gray-50 px-2 text-xs font-semibold text-gray-500 dark:border-gray-800 dark:bg-gray-900/50" style={{ height: HEADER_H }}>
             Activity
           </div>
-          <div style={{ height: chartH }} className="overflow-hidden">
+          <div className="overflow-hidden">
             {sorted.map((a, i) => (
               <div
                 key={a.job_schedule_activity_id}
@@ -229,7 +229,6 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
           ref={chartRef}
           onScroll={onChartScroll}
           className="gantt-chart-area relative flex-1 overflow-auto"
-          style={{ maxHeight: "100%" }}
         >
           <GanttChart
             sorted={sorted}

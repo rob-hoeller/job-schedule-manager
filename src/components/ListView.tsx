@@ -148,7 +148,7 @@ export function ListView({ activities, dependencies }: Props) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
+      <div className="overflow-auto rounded-lg border border-gray-200 dark:border-gray-800" style={{ maxHeight: "calc(100vh - 340px)" }}>
         <table className="w-full text-left">
           <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/50">
             <tr>
