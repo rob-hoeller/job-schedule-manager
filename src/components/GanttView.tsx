@@ -46,7 +46,7 @@ function abbreviate(name: string): string {
 export function GanttView({ activities, dependencies, calendarDays }: Props) {
   const chartRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
-  const [zoomIdx, setZoomIdx] = useState(1);
+  const [zoomIdx, setZoomIdx] = useState(2);
   const [selected, setSelected] = useState<Activity | null>(null);
   const highlightedRow: number | null = null;
 
@@ -210,7 +210,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
             Activity
           </div>
           {/* Scrollable label rows — synced from chart */}
-          <div ref={labelRef} className="overflow-hidden">
+          <div ref={labelRef} className="overflow-hidden" style={{ height: `calc(100% - ${HEADER_H}px)` }}>
             {sorted.map((a, i) => (
               <div
                 key={a.job_schedule_activity_id}
