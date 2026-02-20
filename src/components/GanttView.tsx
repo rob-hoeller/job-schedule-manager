@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Dependency, CalendarDay } from "@/types";
 import { ActivityDetailPopup } from "./ActivityDetailPopup";
-import { statusClass, parseLocalDate } from "@/lib/utils";
+import { parseLocalDate } from "@/lib/utils";
 
 /* ── constants ── */
 const ROW_H = 32;
