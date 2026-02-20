@@ -46,6 +46,7 @@ function abbreviate(name: string): string {
 /* ── main component ── */
 export function GanttView({ activities, dependencies, calendarDays }: Props) {
   const chartRef = useRef<HTMLDivElement>(null);
+  const mobileChartRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   const [zoomIdx, setZoomIdx] = useState(2);
   const [selected, setSelected] = useState<Activity | null>(null);
@@ -149,17 +150,21 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
 
   /* Scroll to today on mount — horizontal to today line, vertical to first activity on/after today */
   useEffect(() => {
-    // Delay to ensure layout is complete
     requestAnimationFrame(() => {
-      if (!chartRef.current) return;
-      if (todayOffset !== null) {
-        chartRef.current.scrollLeft = Math.max(0, todayOffset - chartRef.current.clientWidth / 3);
-      }
       const todayKey = toKey(new Date());
       const firstIdx = sorted.findIndex((a) => (a.current_end_date ?? a.current_start_date ?? "") >= todayKey);
-      if (firstIdx > 0) {
-        chartRef.current.scrollTop = firstIdx * ROW_H;
-        if (labelRef.current) labelRef.current.scrollTop = firstIdx * ROW_H;
+
+      for (const ref of [chartRef, mobileChartRef]) {
+        if (!ref.current) continue;
+        if (todayOffset !== null) {
+          ref.current.scrollLeft = Math.max(0, todayOffset - ref.current.clientWidth / 3);
+        }
+        if (firstIdx > 0) {
+          ref.current.scrollTop = firstIdx * ROW_H;
+        }
+      }
+      if (firstIdx > 0 && labelRef.current) {
+        labelRef.current.scrollTop = firstIdx * ROW_H;
       }
     });
   }, [todayOffset, sorted]);
@@ -208,8 +213,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
       {/* ── Mobile: chart only ── */}
       <div className="min-h-0 flex-1 flex flex-col sm:hidden">
         <div
-          ref={chartRef}
-          onScroll={onChartScroll}
+          ref={mobileChartRef}
           className="gantt-chart-area relative min-h-0 flex-1 overflow-auto rounded-lg border border-gray-200 dark:border-gray-800"
         >
           <GanttChart
