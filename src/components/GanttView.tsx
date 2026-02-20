@@ -202,15 +202,15 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
       <div className="hidden overflow-hidden rounded-lg border border-gray-200 sm:flex dark:border-gray-800" style={{ maxHeight: "calc(100vh - 340px)" }}>
         {/* Left: activity labels */}
         <div
-          ref={labelRef}
-          className="shrink-0 overflow-hidden border-r border-gray-200 dark:border-gray-800"
+          className="shrink-0 border-r border-gray-200 dark:border-gray-800"
           style={{ width: LABEL_W }}
         >
-          {/* header — sticky to match chart header */}
-          <div className="flex items-end border-b border-gray-200 bg-gray-50 px-2 text-xs font-semibold text-gray-500 dark:border-gray-800 dark:bg-gray-900/50" style={{ height: HEADER_H }}>
+          {/* Fixed header */}
+          <div className="flex items-end border-b border-gray-200 bg-gray-50 px-2 text-xs font-semibold text-gray-500 dark:border-gray-800 dark:bg-gray-900" style={{ height: HEADER_H }}>
             Activity
           </div>
-          <div className="overflow-hidden">
+          {/* Scrollable label rows — synced from chart */}
+          <div ref={labelRef} className="overflow-hidden">
             {sorted.map((a, i) => (
               <div
                 key={a.job_schedule_activity_id}
@@ -299,7 +299,7 @@ function GanttChart({
       {/* ── Sticky header ── */}
       <div className="sticky top-0 z-10">
         <svg width={chartW} height={HEADER_H} className="select-none">
-          <rect x={0} y={0} width={chartW} height={HEADER_H} className="fill-gray-50 dark:fill-gray-900/50" />
+          <rect x={0} y={0} width={chartW} height={HEADER_H} className="fill-gray-50 dark:fill-gray-900" />
           {dates.map((d, i) => {
             const x = i * colW;
             const key = toKey(d);
