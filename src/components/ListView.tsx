@@ -64,9 +64,22 @@ export function ListView({ activities, dependencies }: Props) {
 
   const lateCount = useMemo(() => {
     if (!today) return 0;
-    return activities.filter(
+    const lateActivities = activities.filter(
       (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today,
-    ).length;
+    );
+    // Debug logging
+    console.log("Late count calculation:", {
+      today,
+      totalActivities: activities.length,
+      lateActivities: lateActivities.length,
+      lateDetails: lateActivities.map(a => ({
+        desc: a.description,
+        status: a.status,
+        endDate: a.current_end_date,
+        comparison: `${a.current_end_date} < ${today}`
+      }))
+    });
+    return lateActivities.length;
   }, [activities, today]);
 
   const filtered = useMemo(() => {
@@ -112,7 +125,13 @@ export function ListView({ activities, dependencies }: Props) {
       {/* Debug: Show current date */}
       {today && (
         <div className="rounded border border-blue-300 bg-blue-50 px-2 py-1 text-xs text-blue-700 dark:border-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
-          Debug: Today = {today} | Late count = {lateCount}
+          <div>Debug: Today = {today} | Total activities = {activities.length} | Late count = {lateCount}</div>
+          <div className="mt-1 text-[10px]">
+            Late activities: {activities
+              .filter((a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today)
+              .map(a => `${a.description.slice(0, 20)}... (${a.current_end_date})`)
+              .join(", ")}
+          </div>
         </div>
       )}
       
