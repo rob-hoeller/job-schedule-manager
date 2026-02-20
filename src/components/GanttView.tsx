@@ -166,10 +166,13 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
     }
   }, [todayOffset, sorted]);
 
-  /* Scroll to today on mount */
+  /* Scroll to today on initial load only */
+  const hasScrolled = useRef(false);
   useEffect(() => {
+    if (hasScrolled.current || sorted.length === 0) return;
+    hasScrolled.current = true;
     requestAnimationFrame(scrollToToday);
-  }, [scrollToToday]);
+  }, [scrollToToday, sorted.length]);
 
   function handleBarClick(a: Activity) {
     setSelected(a);
