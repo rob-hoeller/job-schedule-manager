@@ -200,6 +200,20 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
         >Today</button>
       </div>
 
+      {/* Dependency legend */}
+      <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
+        <div className="flex items-center gap-1.5">
+          <div className="h-2 w-2 rounded-full bg-blue-500/70 dark:bg-blue-400/70" />
+          <span className="hidden sm:inline">Finish → Start</span>
+          <span className="sm:hidden">FS</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="h-2 w-2 rounded-full bg-orange-600/70 dark:bg-orange-400/70" />
+          <span className="hidden sm:inline">Start → Start</span>
+          <span className="sm:hidden">SS</span>
+        </div>
+      </div>
+
       {/* ── Mobile: chart only ── */}
       <div className="min-h-0 flex-1 flex flex-col sm:hidden">
         <div
@@ -442,18 +456,26 @@ function GanttChart({
 
           const path = `M${fromX},${fromY} L${midX},${fromY} L${midX},${toY} L${toX},${toY}`;
 
+          const isFS = d.dependency_type === "FS";
+          const strokeClass = isFS
+            ? "stroke-blue-500/70 dark:stroke-blue-400/70"
+            : "stroke-orange-600/70 dark:stroke-orange-400/70";
+          const fillClass = isFS
+            ? "fill-blue-500/70 dark:fill-blue-400/70"
+            : "fill-orange-600/70 dark:fill-orange-400/70";
+
           return (
             <g key={d.job_schedule_activity_dependency_id}>
               <path
                 d={path}
                 fill="none"
-                className="stroke-blue-500/70 dark:stroke-blue-400/70"
+                className={strokeClass}
                 strokeWidth={1}
               />
               {/* Arrow head */}
               <polygon
                 points={`${toX},${toY} ${toX - 4},${toY - 3} ${toX - 4},${toY + 3}`}
-                className="fill-blue-500/70 dark:fill-blue-400/70"
+                className={fillClass}
               />
             </g>
           );
