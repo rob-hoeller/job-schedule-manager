@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Dependency, CalendarDay } from "@/types";
 import { ActivityDetailPopup } from "./ActivityDetailPopup";
+import { statusClass } from "@/lib/utils";
 
 /* ── constants ── */
 const ROW_H = 32;
@@ -10,13 +11,12 @@ const BAR_H = 20;
 const BAR_Y_OFFSET = (ROW_H - BAR_H) / 2;
 const HEADER_H = 48;
 const LABEL_W = 280;
-const ZOOM_LEVELS = [24, 32, 44, 60, 80];
 
-/* ── colour fills for SVG bars ── */
+/* ── colour fills for SVG bars (darker shades for white text legibility) ── */
 const FILL: Record<string, string> = {
-  Released: "#3b82f6",
-  Approved: "#22c55e",
-  Completed: "#9ca3af",
+  Released: "#2563eb",
+  Approved: "#16a34a",
+  Completed: "#6b7280",
 };
 function fill(status: string) {
   return FILL[status] ?? "#9ca3af";
@@ -45,12 +45,13 @@ function abbreviate(name: string): string {
 /* ── main component ── */
 export function GanttView({ activities, dependencies, calendarDays }: Props) {
   const chartRef = useRef<HTMLDivElement>(null);
+  const mobileChartRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
-  const [zoomIdx, setZoomIdx] = useState(2);
   const [selected, setSelected] = useState<Activity | null>(null);
+  const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set());
   const highlightedRow: number | null = null;
 
-  const colW = ZOOM_LEVELS[zoomIdx];
+  const colW = 44; // Day-level zoom
 
   const activityMap = useMemo(
     () => new Map(activities.map((a) => [a.jsa_rid, a])),
@@ -77,10 +78,27 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
     return m;
   }, [dependencies]);
 
-  /* Sorted activities */
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const a of activities) counts[a.status] = (counts[a.status] ?? 0) + 1;
+    return counts;
+  }, [activities]);
+
+  function toggleStatus(status: string) {
+    setHiddenStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      return next;
+    });
+  }
+
+  /* Sorted + filtered activities */
   const sorted = useMemo(
-    () => [...activities].sort((a, b) => (a.current_start_date ?? "").localeCompare(b.current_start_date ?? "")),
-    [activities],
+    () => [...activities]
+      .filter((a) => !hiddenStatuses.has(a.status))
+      .sort((a, b) => (a.current_start_date ?? "").localeCompare(b.current_start_date ?? "")),
+    [activities, hiddenStatuses],
   );
 
   /* Row index by jsa_rid */
@@ -128,12 +146,31 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
     }
   }, []);
 
-  /* Scroll to today on mount */
-  useEffect(() => {
-    if (todayOffset !== null && chartRef.current) {
-      chartRef.current.scrollLeft = Math.max(0, todayOffset - chartRef.current.clientWidth / 3);
+  const scrollToToday = useCallback(() => {
+    const todayKey = toKey(new Date());
+    const firstIdx = sorted.findIndex((a) => (a.current_end_date ?? a.current_start_date ?? "") >= todayKey);
+
+    for (const ref of [chartRef, mobileChartRef]) {
+      if (!ref.current) continue;
+      if (todayOffset !== null) {
+        ref.current.scrollLeft = Math.max(0, todayOffset - ref.current.clientWidth / 3);
+      }
+      if (firstIdx > 0) {
+        ref.current.scrollTop = firstIdx * ROW_H;
+      }
     }
-  }, [todayOffset]);
+    if (firstIdx > 0 && labelRef.current) {
+      labelRef.current.scrollTop = firstIdx * ROW_H;
+    }
+  }, [todayOffset, sorted]);
+
+  /* Scroll to today on initial load only */
+  const hasScrolled = useRef(false);
+  useEffect(() => {
+    if (hasScrolled.current || sorted.length === 0) return;
+    hasScrolled.current = true;
+    requestAnimationFrame(scrollToToday);
+  }, [scrollToToday, sorted.length]);
 
   function handleBarClick(a: Activity) {
     setSelected(a);
@@ -144,40 +181,29 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
   }
 
   return (
-    <div className="space-y-3">
-      {/* Zoom controls */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500">Zoom:</span>
+    <div className="flex h-full flex-col gap-3">
+      {/* Status filters + Today */}
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {Object.entries(statusCounts).map(([status, count]) => (
+          <button
+            key={status}
+            onClick={() => toggleStatus(status)}
+            className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition ${statusClass(status)} ${hiddenStatuses.has(status) ? "opacity-30 line-through" : "hover:opacity-80"}`}
+          >
+            {status} <span className="font-normal">{count}</span>
+          </button>
+        ))}
         <button
-          onClick={() => setZoomIdx(Math.max(0, zoomIdx - 1))}
-          disabled={zoomIdx === 0}
-          className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-30 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-        >−</button>
-        <span className="w-16 text-center text-xs text-gray-500">
-          {colW <= 32 ? "Week" : colW <= 44 ? "Day" : "Detail"}
-        </span>
-        <button
-          onClick={() => setZoomIdx(Math.min(ZOOM_LEVELS.length - 1, zoomIdx + 1))}
-          disabled={zoomIdx === ZOOM_LEVELS.length - 1}
-          className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-30 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-        >+</button>
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded" style={{ background: FILL.Released }} /> Released</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded" style={{ background: FILL.Approved }} /> Approved</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded" style={{ background: FILL.Completed }} /> Completed</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-gray-100 dark:bg-gray-800" /> Non-workday</span>
+          onClick={scrollToToday}
+          className="rounded-full border border-gray-300 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+        >Today</button>
       </div>
 
       {/* ── Mobile: chart only ── */}
-      <div className="sm:hidden">
+      <div className="min-h-0 flex-1 flex flex-col sm:hidden">
         <div
-          ref={chartRef}
-          onScroll={onChartScroll}
-          className="gantt-chart-area relative overflow-auto rounded-lg border border-gray-200 dark:border-gray-800"
-          style={{ maxHeight: "calc(100vh - 340px)" }}
+          ref={mobileChartRef}
+          className="gantt-chart-area relative min-h-0 flex-1 overflow-auto rounded-lg border border-gray-200 dark:border-gray-800"
         >
           <GanttChart
             sorted={sorted}
@@ -199,7 +225,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
       </div>
 
       {/* ── Desktop: split panel ── */}
-      <div className="hidden overflow-hidden rounded-lg border border-gray-200 sm:flex dark:border-gray-800" style={{ maxHeight: "calc(100vh - 340px)" }}>
+      <div className="hidden min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 sm:flex dark:border-gray-800">
         {/* Left: activity labels */}
         <div
           className="shrink-0 border-r border-gray-200 dark:border-gray-800"

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Activity, Dependency } from "@/types";
 import { StatusBadge } from "./StatusBadge";
-import { formatDate, dayDrift, driftClass, driftLabel } from "@/lib/utils";
+import { formatDate, formatDateCompact, dayDrift, driftClass, driftLabel, STATUS_DOT } from "@/lib/utils";
 
 interface Props {
   activity: Activity;
@@ -76,14 +76,26 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
             {a.description}
           </div>
         </td>
+        {/* Mobile start date */}
+        <td className="px-3 py-2.5 text-center text-xs md:hidden">
+          {formatDateCompact(a.current_start_date)}
+        </td>
         <td className="hidden px-3 py-2.5 text-sm sm:table-cell">{a.trade_partner_name ?? "—"}</td>
-        <td className="px-3 py-2.5"><StatusBadge status={a.status} /></td>
-        <td className="hidden px-3 py-2.5 text-sm md:table-cell">
-          {formatDate(a.current_start_date)}
+        {/* Status: dot on mobile, badge on desktop */}
+        <td className="px-3 py-2.5 text-center">
+          <span className="md:hidden">
+            <span className={`inline-block h-2.5 w-2.5 rounded-full ${STATUS_DOT[a.status] ?? "bg-gray-400"}`} title={a.status} />
+          </span>
+          <span className="hidden md:inline">
+            <StatusBadge status={a.status} />
+          </span>
+        </td>
+        <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell">
+          {formatDateCompact(a.current_start_date)}
           <Drift original={a.original_start_date} current={a.current_start_date} />
         </td>
-        <td className="hidden px-3 py-2.5 text-sm md:table-cell">
-          {formatDate(a.current_end_date)}
+        <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell">
+          {formatDateCompact(a.current_end_date)}
           <Drift original={a.original_end_date} current={a.current_end_date} />
         </td>
         <td className="hidden px-3 py-2.5 text-sm text-center lg:table-cell">
@@ -93,7 +105,7 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
       </tr>
       {open && (
         <tr className="border-b border-gray-100 dark:border-gray-800">
-          <td colSpan={6} className="bg-gray-50/50 px-6 py-3 dark:bg-gray-900/30">
+          <td colSpan={7} className="bg-gray-50/50 px-6 py-3 dark:bg-gray-900/30">
             {/* Mobile: show fields hidden on small screens */}
             <div className="mb-3 space-y-1 text-sm sm:hidden">
               <p><span className="text-gray-500">Trade: </span>{a.trade_partner_name ?? "—"}</p>
