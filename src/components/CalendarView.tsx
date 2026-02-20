@@ -2,8 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Activity, Dependency, CalendarDay } from "@/types";
-import { StatusBadge } from "./StatusBadge";
-import { formatDate } from "@/lib/utils";
+import { ActivityDetailPopup } from "./ActivityDetailPopup";
 
 /* ── colour map for activity bars ── */
 const BAR_COLORS: Record<string, string> = {
@@ -49,72 +48,7 @@ interface Props {
 }
 
 /* ── detail popup ── */
-function DetailPopup({
-  activity: a,
-  predecessors,
-  successors,
-  activityMap,
-  onClose,
-}: {
-  activity: Activity;
-  predecessors: Dependency[];
-  successors: Dependency[];
-  activityMap: Map<number, Activity>;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="mx-4 max-h-[80vh] w-full max-w-md overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <h3 className="text-base font-semibold">{a.description}</h3>
-          <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
-        </div>
-        <div className="space-y-2 text-sm">
-          <p><span className="text-gray-500">Trade: </span>{a.trade_partner_name ?? "—"}</p>
-          <p><span className="text-gray-500">Status: </span><StatusBadge status={a.status} /></p>
-          <p><span className="text-gray-500">Start: </span>{formatDate(a.current_start_date)}</p>
-          <p><span className="text-gray-500">End: </span>{formatDate(a.current_end_date)}</p>
-          <p><span className="text-gray-500">Duration: </span>{a.current_duration ?? "—"} days</p>
-        </div>
-        {(predecessors.length > 0 || successors.length > 0) && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase text-gray-500">Predecessors</p>
-              {predecessors.filter((d) => activityMap.has(d.predecessor_jsa_rid)).length === 0 ? (
-                <span className="text-xs text-gray-400 italic">None</span>
-              ) : (
-                <ul className="space-y-0.5">
-                  {predecessors.filter((d) => activityMap.has(d.predecessor_jsa_rid)).map((d) => (
-                    <li key={d.job_schedule_activity_dependency_id} className="text-xs">
-                      {d.dependency_type}{d.lag_days !== 0 && ` (${d.lag_days > 0 ? "+" : ""}${d.lag_days})`} — {activityMap.get(d.predecessor_jsa_rid)!.description}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase text-gray-500">Successors</p>
-              {successors.filter((d) => activityMap.has(d.successor_jsa_rid)).length === 0 ? (
-                <span className="text-xs text-gray-400 italic">None</span>
-              ) : (
-                <ul className="space-y-0.5">
-                  {successors.filter((d) => activityMap.has(d.successor_jsa_rid)).map((d) => (
-                    <li key={d.job_schedule_activity_dependency_id} className="text-xs">
-                      {d.dependency_type}{d.lag_days !== 0 && ` (${d.lag_days > 0 ? "+" : ""}${d.lag_days})`} — {activityMap.get(d.successor_jsa_rid)!.description}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+/* Detail popup is now shared via ActivityDetailPopup */
 
 /* ── overflow popup ("+N more") ── */
 function OverflowPopup({
@@ -438,7 +372,7 @@ export function CalendarView({ activities, dependencies, calendarDays }: Props) 
 
       {/* Detail popup */}
       {selected && (
-        <DetailPopup
+        <ActivityDetailPopup
           activity={selected}
           predecessors={predMap.get(selected.jsa_rid) ?? []}
           successors={succMap.get(selected.jsa_rid) ?? []}

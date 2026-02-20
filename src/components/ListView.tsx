@@ -148,9 +148,9 @@ export function ListView({ activities, dependencies }: Props) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
+      <div className="overflow-auto rounded-lg border border-gray-200 dark:border-gray-800" style={{ maxHeight: "calc(100vh - 340px)" }}>
         <table className="w-full text-left">
-          <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/50">
+          <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
             <tr>
               {COL_HEADERS.map((h) => (
                 <th key={h.label} className={`px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 ${h.className}`}>
