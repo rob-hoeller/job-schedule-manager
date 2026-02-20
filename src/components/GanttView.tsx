@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Dependency, CalendarDay } from "@/types";
 import { ActivityDetailPopup } from "./ActivityDetailPopup";
-import { statusClass, parseLocalDate } from "@/lib/utils";
+import { parseLocalDate } from "@/lib/utils";
 
 /* ── constants ── */
 const ROW_H = 32;
@@ -48,7 +48,6 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
   const mobileChartRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<Activity | null>(null);
-  const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set());
   const highlightedRow: number | null = null;
 
   const colW = 44; // Day-level zoom
@@ -78,27 +77,11 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
     return m;
   }, [dependencies]);
 
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const a of activities) counts[a.status] = (counts[a.status] ?? 0) + 1;
-    return counts;
-  }, [activities]);
-
-  function toggleStatus(status: string) {
-    setHiddenStatuses((prev) => {
-      const next = new Set(prev);
-      if (next.has(status)) next.delete(status);
-      else next.add(status);
-      return next;
-    });
-  }
-
-  /* Sorted + filtered activities */
+  /* Sorted activities */
   const sorted = useMemo(
     () => [...activities]
-      .filter((a) => !hiddenStatuses.has(a.status))
       .sort((a, b) => (a.current_start_date ?? "").localeCompare(b.current_start_date ?? "")),
-    [activities, hiddenStatuses],
+    [activities],
   );
 
   /* Row index by jsa_rid */
@@ -183,20 +166,20 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
 
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* Status filters + Today */}
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        {Object.entries(statusCounts).map(([status, count]) => (
-          <button
-            key={status}
-            onClick={() => toggleStatus(status)}
-            className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition ${statusClass(status)} ${hiddenStatuses.has(status) ? "opacity-30 line-through" : "hover:opacity-80"}`}
-          >
-            {status} <span className="font-normal">{count}</span>
-          </button>
-        ))}
+      {/* Dependency legend + Today button */}
+      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
+        <span className="font-medium">Dependency:</span>
+        <div className="flex items-center gap-1.5">
+          <div className="h-2 w-2 rounded-full bg-blue-500/70 dark:bg-blue-400/70" />
+          <span>Finish → Start</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="h-2 w-2 rounded-full bg-orange-600/70 dark:bg-orange-400/70" />
+          <span>Start → Start</span>
+        </div>
         <button
           onClick={scrollToToday}
-          className="rounded-full border border-gray-300 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+          className="ml-auto rounded-full border border-gray-300 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
         >Today</button>
       </div>
 
@@ -442,18 +425,26 @@ function GanttChart({
 
           const path = `M${fromX},${fromY} L${midX},${fromY} L${midX},${toY} L${toX},${toY}`;
 
+          const isFS = d.dependency_type === "FS";
+          const strokeClass = isFS
+            ? "stroke-blue-500/70 dark:stroke-blue-400/70"
+            : "stroke-orange-600/70 dark:stroke-orange-400/70";
+          const fillClass = isFS
+            ? "fill-blue-500/70 dark:fill-blue-400/70"
+            : "fill-orange-600/70 dark:fill-orange-400/70";
+
           return (
             <g key={d.job_schedule_activity_dependency_id}>
               <path
                 d={path}
                 fill="none"
-                className="stroke-blue-500/70 dark:stroke-blue-400/70"
+                className={strokeClass}
                 strokeWidth={1}
               />
               {/* Arrow head */}
               <polygon
                 points={`${toX},${toY} ${toX - 4},${toY - 3} ${toX - 4},${toY + 3}`}
-                className="fill-blue-500/70 dark:fill-blue-400/70"
+                className={fillClass}
               />
             </g>
           );
