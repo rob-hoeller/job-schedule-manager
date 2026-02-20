@@ -149,16 +149,19 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
 
   /* Scroll to today on mount — horizontal to today line, vertical to first activity on/after today */
   useEffect(() => {
-    if (!chartRef.current) return;
-    if (todayOffset !== null) {
-      chartRef.current.scrollLeft = Math.max(0, todayOffset - chartRef.current.clientWidth / 3);
-    }
-    const todayStr = toKey(new Date());
-    const firstIdx = sorted.findIndex((a) => (a.current_end_date ?? a.current_start_date ?? "") >= todayStr);
-    if (firstIdx > 0) {
-      chartRef.current.scrollTop = firstIdx * ROW_H;
-      if (labelRef.current) labelRef.current.scrollTop = firstIdx * ROW_H;
-    }
+    // Delay to ensure layout is complete
+    requestAnimationFrame(() => {
+      if (!chartRef.current) return;
+      if (todayOffset !== null) {
+        chartRef.current.scrollLeft = Math.max(0, todayOffset - chartRef.current.clientWidth / 3);
+      }
+      const todayKey = toKey(new Date());
+      const firstIdx = sorted.findIndex((a) => (a.current_end_date ?? a.current_start_date ?? "") >= todayKey);
+      if (firstIdx > 0) {
+        chartRef.current.scrollTop = firstIdx * ROW_H;
+        if (labelRef.current) labelRef.current.scrollTop = firstIdx * ROW_H;
+      }
+    });
   }, [todayOffset, sorted]);
 
   function handleBarClick(a: Activity) {
@@ -170,7 +173,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="flex h-full flex-col gap-3">
       {/* Zoom controls */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-500">Zoom:</span>
@@ -203,12 +206,11 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
       </div>
 
       {/* ── Mobile: chart only ── */}
-      <div className="sm:hidden">
+      <div className="min-h-0 flex-1 flex flex-col sm:hidden">
         <div
           ref={chartRef}
           onScroll={onChartScroll}
-          className="gantt-chart-area relative overflow-auto rounded-lg border border-gray-200 dark:border-gray-800"
-          style={{ maxHeight: "calc(100vh - 340px)" }}
+          className="gantt-chart-area relative min-h-0 flex-1 overflow-auto rounded-lg border border-gray-200 dark:border-gray-800"
         >
           <GanttChart
             sorted={sorted}
@@ -230,7 +232,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
       </div>
 
       {/* ── Desktop: split panel ── */}
-      <div className="hidden overflow-hidden rounded-lg border border-gray-200 sm:flex dark:border-gray-800" style={{ maxHeight: "calc(100vh - 340px)" }}>
+      <div className="hidden min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 sm:flex dark:border-gray-800">
         {/* Left: activity labels */}
         <div
           className="shrink-0 border-r border-gray-200 dark:border-gray-800"

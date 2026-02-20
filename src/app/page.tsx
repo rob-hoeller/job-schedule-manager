@@ -25,8 +25,8 @@ export default function Home() {
   );
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <header className="mb-6">
+    <main className="mx-auto flex h-dvh max-w-6xl flex-col px-4 py-4 sm:px-6 lg:px-8">
+      <header className="mb-3 shrink-0">
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Job Schedule Manager
         </h1>
@@ -35,33 +35,39 @@ export default function Home() {
         </p>
       </header>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-3 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <JobSelector onSelect={setJob} />
         {job && <ViewTabs active={view} onChange={setView} />}
       </div>
 
       {job && (
-        <div className="mt-4 space-y-6">
-          <JobDetails job={job} settlement={settlement} />
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <div className="shrink-0">
+            <JobDetails job={job} settlement={settlement} />
+          </div>
 
           {loading && <p className="text-sm text-gray-500">Loading schedule…</p>}
           {error && <p className="text-sm text-red-500">Error: {error}</p>}
-          {!loading && !error && view === "list" && (
-            <ListView activities={activities} dependencies={dependencies} />
-          )}
-          {!loading && !error && view === "calendar" && (
-            <CalendarView
-              activities={activities}
-              dependencies={dependencies}
-              calendarDays={calendarDays}
-            />
-          )}
-          {!loading && !error && view === "gantt" && (
-            <GanttView
-              activities={activities}
-              dependencies={dependencies}
-              calendarDays={calendarDays}
-            />
+          {!loading && !error && (
+            <div className="min-h-0 flex-1">
+              {view === "list" && (
+                <ListView activities={activities} dependencies={dependencies} />
+              )}
+              {view === "calendar" && (
+                <CalendarView
+                  activities={activities}
+                  dependencies={dependencies}
+                  calendarDays={calendarDays}
+                />
+              )}
+              {view === "gantt" && (
+                <GanttView
+                  activities={activities}
+                  dependencies={dependencies}
+                  calendarDays={calendarDays}
+                />
+              )}
+            </div>
           )}
         </div>
       )}

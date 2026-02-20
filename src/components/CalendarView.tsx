@@ -148,7 +148,7 @@ function MobileView({
   }, []);
 
   return (
-    <div className="overflow-y-auto space-y-2" style={{ maxHeight: "calc(100vh - 340px)" }}>
+    <div className="min-h-0 flex-1 overflow-y-auto space-y-2">
       {visibleDays.map((date) => {
         const key = toKey(date);
         const cd = calendarDays.get(key);
@@ -275,7 +275,7 @@ export function CalendarView({ activities, dependencies, calendarDays }: Props) 
   const monthLabel = new Date(year, month).toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full flex-col gap-3">
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-4 rounded bg-blue-500/80" /> Released</span>
@@ -285,7 +285,7 @@ export function CalendarView({ activities, dependencies, calendarDays }: Props) 
       </div>
 
       {/* ── Mobile: scrollable day list ── */}
-      <div className="sm:hidden">
+      <div className="min-h-0 flex-1 flex flex-col sm:hidden">
         <MobileView
           calendarDays={calendarDays}
           dateActivities={dateActivities}

@@ -107,7 +107,7 @@ export function ListView({ activities, dependencies }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full flex-col gap-3">
       {/* Status filters */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {Object.entries(statusCounts).map(([status, count]) => (
@@ -139,7 +139,7 @@ export function ListView({ activities, dependencies }: Props) {
       />
 
       {/* Table */}
-      <div className="overflow-auto rounded-lg border border-gray-200 dark:border-gray-800" style={{ maxHeight: "calc(100vh - 340px)" }}>
+      <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-gray-200 dark:border-gray-800">
         <table className="w-full text-left">
           <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
             <tr>
