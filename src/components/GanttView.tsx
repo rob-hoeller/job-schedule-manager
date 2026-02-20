@@ -48,6 +48,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
   const mobileChartRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<Activity | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const highlightedRow: number | null = null;
 
   const colW = 44; // Day-level zoom
@@ -156,6 +157,23 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
     requestAnimationFrame(scrollToToday);
   }, [scrollToToday, sorted.length]);
 
+  /* Exit fullscreen on Escape */
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isFullscreen]);
+
+  /* Refs for fullscreen panels */
+  const fsChartRef = useRef<HTMLDivElement>(null);
+  const fsLabelRef = useRef<HTMLDivElement>(null);
+  const onFsChartScroll = useCallback(() => {
+    if (fsChartRef.current && fsLabelRef.current) {
+      fsLabelRef.current.scrollTop = fsChartRef.current.scrollTop;
+    }
+  }, []);
+
   function handleBarClick(a: Activity) {
     setSelected(a);
   }
@@ -177,10 +195,21 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
           <div className="h-2 w-2 rounded-full bg-orange-600/70 dark:bg-orange-400/70" />
           <span>Start → Start</span>
         </div>
-        <button
-          onClick={scrollToToday}
-          className="ml-auto rounded-full border border-gray-300 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-        >Today</button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={scrollToToday}
+            className="rounded-full border border-gray-300 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+          >Today</button>
+          <button
+            onClick={() => setIsFullscreen(true)}
+            className="rounded-full border border-gray-300 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+            title="Fullscreen"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <path d="M3.28 2.22a.75.75 0 00-1.06 1.06L5.44 6.5H2.75a.75.75 0 000 1.5h4.5A.75.75 0 008 7.25v-4.5a.75.75 0 00-1.5 0v2.69L3.28 2.22zM16.72 2.22a.75.75 0 010 1.06L13.56 6.5h2.69a.75.75 0 010 1.5h-4.5A.75.75 0 0111 7.25v-4.5a.75.75 0 011.5 0v2.69l3.22-3.22a.75.75 0 011.06 0zM3.28 17.78a.75.75 0 001.06 0l3.22-3.22v2.69a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.69L3.28 16.72a.75.75 0 000 1.06zM16.72 17.78a.75.75 0 01-1.06 0l-3.22-3.22v2.69a.75.75 0 01-1.5 0v-4.5a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-2.69l3.22 3.22a.75.75 0 010 1.06z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* ── Mobile: chart only ── */}
@@ -257,6 +286,94 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
           />
         </div>
       </div>
+
+      {/* ── Fullscreen overlay ── */}
+      {isFullscreen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-950">
+          {/* Fullscreen header */}
+          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 dark:border-gray-800">
+            <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
+              <span className="font-medium">Dependency:</span>
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 rounded-full bg-blue-500/70 dark:bg-blue-400/70" />
+                <span>Finish → Start</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 rounded-full bg-orange-600/70 dark:bg-orange-400/70" />
+                <span>Start → Start</span>
+              </div>
+              <button
+                onClick={() => {
+                  const todayStr = new Date().toISOString().slice(0, 10);
+                  const firstIdx = sorted.findIndex((a) => (a.current_end_date ?? a.current_start_date ?? "") >= todayStr);
+                  if (fsChartRef.current && todayOffset !== null) {
+                    fsChartRef.current.scrollLeft = Math.max(0, todayOffset - fsChartRef.current.clientWidth / 3);
+                    if (firstIdx > 0) fsChartRef.current.scrollTop = firstIdx * ROW_H;
+                  }
+                  if (firstIdx > 0 && fsLabelRef.current) {
+                    fsLabelRef.current.scrollTop = firstIdx * ROW_H;
+                  }
+                }}
+                className="rounded-full border border-gray-300 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+              >Today</button>
+            </div>
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+              title="Exit fullscreen (Esc)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Fullscreen chart */}
+          <div className="flex min-h-0 flex-1">
+            {/* Labels */}
+            <div className="hidden shrink-0 border-r border-gray-200 sm:block dark:border-gray-800" style={{ width: LABEL_W }}>
+              <div className="flex items-end border-b border-gray-200 bg-gray-50 px-2 text-xs font-semibold text-gray-500 dark:border-gray-800 dark:bg-gray-900" style={{ height: HEADER_H }}>
+                Activity
+              </div>
+              <div ref={fsLabelRef} className="overflow-hidden" style={{ height: `calc(100% - ${HEADER_H}px)` }}>
+                {sorted.map((a, i) => (
+                  <div
+                    key={a.job_schedule_activity_id}
+                    className={`flex items-center gap-1.5 border-b border-gray-50 px-2 text-xs dark:border-gray-900 ${highlightedRow === i ? "bg-blue-50 dark:bg-blue-950/30" : "hover:bg-gray-50 dark:hover:bg-gray-900/30"}`}
+                    style={{ height: ROW_H }}
+                  >
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: fill(a.status) }} />
+                    <span className="truncate" title={a.description}>{a.description}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Chart */}
+            <div
+              ref={fsChartRef}
+              onScroll={onFsChartScroll}
+              className="gantt-chart-area relative flex-1 overflow-auto"
+            >
+              <GanttChart
+                sorted={sorted}
+                rowIndex={rowIndex}
+                dependencies={dependencies}
+                activityMap={activityMap}
+                calendarDays={calendarDays}
+                dates={dates}
+                startDate={startDate}
+                colW={colW}
+                chartW={chartW}
+                chartH={chartH}
+                todayOffset={todayOffset}
+                highlightedRow={highlightedRow}
+                onBarClick={handleBarClick}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Detail popup */}
       {selected && (
