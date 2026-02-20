@@ -365,13 +365,13 @@ function GanttChart({
         // Draw stronger lines for month starts only
         if (isFirst) {
           return (
-            <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-300 dark:stroke-gray-700" strokeWidth={1} />
+            <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-400 dark:stroke-gray-700" strokeWidth={1} />
           );
         }
         
-        // Draw day lines (80% opacity)
+        // Draw day lines (darker gray in light mode for visibility)
         return (
-          <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-200/80 dark:stroke-gray-800/80" strokeWidth={0.5} />
+          <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-400/80 dark:stroke-gray-800/80" strokeWidth={0.5} />
         );
       })}
 
