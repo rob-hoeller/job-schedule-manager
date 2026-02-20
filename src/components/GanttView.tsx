@@ -148,26 +148,28 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
     }
   }, []);
 
-  /* Scroll to today on mount — horizontal to today line, vertical to first activity on/after today */
-  useEffect(() => {
-    requestAnimationFrame(() => {
-      const todayKey = toKey(new Date());
-      const firstIdx = sorted.findIndex((a) => (a.current_end_date ?? a.current_start_date ?? "") >= todayKey);
+  const scrollToToday = useCallback(() => {
+    const todayKey = toKey(new Date());
+    const firstIdx = sorted.findIndex((a) => (a.current_end_date ?? a.current_start_date ?? "") >= todayKey);
 
-      for (const ref of [chartRef, mobileChartRef]) {
-        if (!ref.current) continue;
-        if (todayOffset !== null) {
-          ref.current.scrollLeft = Math.max(0, todayOffset - ref.current.clientWidth / 3);
-        }
-        if (firstIdx > 0) {
-          ref.current.scrollTop = firstIdx * ROW_H;
-        }
+    for (const ref of [chartRef, mobileChartRef]) {
+      if (!ref.current) continue;
+      if (todayOffset !== null) {
+        ref.current.scrollLeft = Math.max(0, todayOffset - ref.current.clientWidth / 3);
       }
-      if (firstIdx > 0 && labelRef.current) {
-        labelRef.current.scrollTop = firstIdx * ROW_H;
+      if (firstIdx > 0) {
+        ref.current.scrollTop = firstIdx * ROW_H;
       }
-    });
+    }
+    if (firstIdx > 0 && labelRef.current) {
+      labelRef.current.scrollTop = firstIdx * ROW_H;
+    }
   }, [todayOffset, sorted]);
+
+  /* Scroll to today on mount */
+  useEffect(() => {
+    requestAnimationFrame(scrollToToday);
+  }, [scrollToToday]);
 
   function handleBarClick(a: Activity) {
     setSelected(a);
@@ -195,6 +197,10 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
           disabled={zoomIdx === ZOOM_LEVELS.length - 1}
           className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-30 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
         >+</button>
+        <button
+          onClick={scrollToToday}
+          className="ml-2 rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+        >Today</button>
       </div>
 
       {/* Status filters */}
