@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 
 export function NavBar() {
@@ -20,7 +21,12 @@ export function NavBar() {
         </p>
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-600 dark:text-gray-400">{name}</span>
+        <Link
+          href="/profile"
+          className="text-sm text-gray-600 hover:text-gray-900 hover:underline dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          {name}
+        </Link>
         <button
           onClick={signOut}
           className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
