@@ -7,6 +7,7 @@ import { ListView } from "@/components/ListView";
 import { CalendarView } from "@/components/CalendarView";
 import { GanttView } from "@/components/GanttView";
 import { ViewTabs } from "@/components/ViewTabs";
+import { NavBar } from "@/components/NavBar";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useCalendarDays } from "@/hooks/useCalendarDays";
 import type { Job, ViewMode } from "@/types";
@@ -27,12 +28,7 @@ export default function Home() {
   return (
     <main className="mx-auto flex h-dvh max-w-6xl flex-col px-4 py-4 sm:px-6 lg:px-8">
       <header className="mb-3 shrink-0">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Job Schedule Manager
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Select a job to view its schedule
-        </p>
+        <NavBar />
       </header>
 
       <div className="mb-3 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
