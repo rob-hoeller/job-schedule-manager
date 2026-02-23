@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Activity, Dependency } from "@/types";
 
@@ -28,6 +28,11 @@ export function useSchedule(scheduleRid: number | null) {
   const [dependencies, setDependencies] = useState<Dependency[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     if (!scheduleRid) {
@@ -50,7 +55,7 @@ export function useSchedule(scheduleRid: number | null) {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [scheduleRid]);
+  }, [scheduleRid, refreshKey]);
 
-  return { activities, dependencies, loading, error };
+  return { activities, dependencies, loading, error, refresh };
 }

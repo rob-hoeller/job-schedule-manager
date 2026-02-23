@@ -5,9 +5,13 @@ import type { Activity, Dependency } from "@/types";
 import { ActivityRow } from "./ActivityRow";
 import { statusClass } from "@/lib/utils";
 
+import type { StagedChange } from "@/hooks/useStaging";
+
 interface Props {
   activities: Activity[];
   dependencies: Dependency[];
+  onActivityClick?: (activity: Activity) => void;
+  stagedChanges?: Map<number, Map<string, StagedChange>>;
 }
 
 const COL_HEADERS: { label: string; className: string }[] = [
@@ -20,7 +24,7 @@ const COL_HEADERS: { label: string; className: string }[] = [
   { label: "Days", className: "hidden lg:table-cell text-center" },
 ];
 
-export function ListView({ activities, dependencies }: Props) {
+export function ListView({ activities, dependencies, onActivityClick, stagedChanges }: Props) {
   const [query, setQuery] = useState("");
   const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set(["Approved"]));
   const [showLate, setShowLate] = useState(false);
@@ -159,6 +163,13 @@ export function ListView({ activities, dependencies }: Props) {
                 predecessors={predMap.get(a.jsa_rid) ?? []}
                 successors={succMap.get(a.jsa_rid) ?? []}
                 activityMap={activityMap}
+                onEditClick={onActivityClick}
+                isStaged={stagedChanges?.has(a.jsa_rid) ?? false}
+                isCascaded={
+                  stagedChanges?.has(a.jsa_rid)
+                    ? ![...(stagedChanges.get(a.jsa_rid)?.values() ?? [])].some((c) => c.is_direct_edit)
+                    : false
+                }
               />
             ))}
           </tbody>

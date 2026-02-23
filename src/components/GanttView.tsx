@@ -29,10 +29,14 @@ function daysBetween(a: Date, b: Date) {
   return Math.round((b.getTime() - a.getTime()) / 86400000);
 }
 
+import type { StagedChange } from "@/hooks/useStaging";
+
 interface Props {
   activities: Activity[];
   dependencies: Dependency[];
   calendarDays: Map<string, CalendarDay>;
+  onActivityClick?: (activity: Activity) => void;
+  stagedChanges?: Map<number, Map<string, StagedChange>>;
 }
 
 /** Generate abbreviation from activity name: "Install Silt Fence" → "ISF" */
@@ -43,7 +47,7 @@ function abbreviate(name: string): string {
 }
 
 /* ── main component ── */
-export function GanttView({ activities, dependencies, calendarDays }: Props) {
+export function GanttView({ activities, dependencies, calendarDays, onActivityClick, stagedChanges }: Props) {
   const chartRef = useRef<HTMLDivElement>(null);
   const mobileChartRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
@@ -175,7 +179,8 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
   }, []);
 
   function handleBarClick(a: Activity) {
-    setSelected(a);
+    if (onActivityClick) onActivityClick(a);
+    else setSelected(a);
   }
 
   if (sorted.length === 0) {
@@ -233,6 +238,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
             highlightedRow={highlightedRow}
             isMobile
             onBarClick={handleBarClick}
+                stagedChanges={stagedChanges}
           />
         </div>
       </div>
@@ -283,6 +289,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
             todayOffset={todayOffset}
             highlightedRow={highlightedRow}
             onBarClick={handleBarClick}
+                stagedChanges={stagedChanges}
           />
         </div>
       </div>
@@ -369,6 +376,7 @@ export function GanttView({ activities, dependencies, calendarDays }: Props) {
                 todayOffset={todayOffset}
                 highlightedRow={highlightedRow}
                 onBarClick={handleBarClick}
+                stagedChanges={stagedChanges}
               />
             </div>
           </div>
@@ -405,6 +413,7 @@ function GanttChart({
   highlightedRow,
   isMobile = false,
   onBarClick,
+  stagedChanges,
 }: {
   sorted: Activity[];
   rowIndex: Map<number, number>;
@@ -420,6 +429,7 @@ function GanttChart({
   highlightedRow: number | null;
   isMobile?: boolean;
   onBarClick: (a: Activity) => void;
+  stagedChanges?: Map<number, Map<string, StagedChange>>;
 }) {
   return (
     <div style={{ width: chartW }}>
@@ -579,6 +589,9 @@ function GanttChart({
         const w = Math.max(span * colW - 2, 4);
         const y = i * ROW_H + BAR_Y_OFFSET;
 
+        const isStaged = stagedChanges?.has(a.jsa_rid) ?? false;
+        const isCascaded = isStaged && ![...(stagedChanges!.get(a.jsa_rid)!.values())].some((c) => c.is_direct_edit);
+
         return (
           <g
             key={a.job_schedule_activity_id}
@@ -593,6 +606,9 @@ function GanttChart({
               rx={3}
               fill={fill(a.status)}
               className="transition-colors hover:brightness-90"
+              strokeDasharray={isStaged ? "4 2" : undefined}
+              stroke={isStaged ? (isCascaded ? "#f97316" : "#f59e0b") : undefined}
+              strokeWidth={isStaged ? 2 : undefined}
             />
             {/* Label on bar */}
             {(isMobile ? w > 16 : w > 50) && (

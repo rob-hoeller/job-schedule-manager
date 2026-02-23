@@ -10,6 +10,9 @@ interface Props {
   predecessors: Dependency[];
   successors: Dependency[];
   activityMap: Map<number, Activity>;
+  onEditClick?: (activity: Activity) => void;
+  isStaged?: boolean;
+  isCascaded?: boolean;
 }
 
 function Drift({ original, current }: { original: string | null; current: string | null }) {
@@ -60,20 +63,31 @@ function DepList({
   );
 }
 
-export function ActivityRow({ activity: a, predecessors, successors, activityMap }: Props) {
+export function ActivityRow({ activity: a, predecessors, successors, activityMap, onEditClick, isStaged, isCascaded }: Props) {
   const [open, setOpen] = useState(false);
   const changed = hasDateChanges(a);
+
+  const rowHighlight = isStaged
+    ? isCascaded
+      ? "border-l-2 border-l-orange-400 bg-orange-50/50 dark:bg-orange-950/20"
+      : "border-l-2 border-l-amber-400 bg-amber-50/50 dark:bg-amber-950/20"
+    : "";
 
   return (
     <>
       <tr
         onClick={() => setOpen(!open)}
-        className="cursor-pointer border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900/50"
+        className={`cursor-pointer border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900/50 ${rowHighlight}`}
       >
         <td className="px-3 py-2.5 text-sm">
           <div className="flex items-center gap-2">
             <span className={`text-xs transition ${open ? "rotate-90" : ""}`}>▶</span>
             {a.description}
+            {isStaged && (
+              <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${isCascaded ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
+                {isCascaded ? "Cascaded" : "Staged"}
+              </span>
+            )}
           </div>
         </td>
         {/* Mobile start date */}
@@ -151,6 +165,16 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
                 <DepList deps={successors} labelRid="successor_jsa_rid" activityMap={activityMap} />
               </div>
             </div>
+            {onEditClick && (
+              <div className="mt-3 flex justify-end">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEditClick(a); }}
+                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                >
+                  Edit Activity
+                </button>
+              </div>
+            )}
           </td>
         </tr>
       )}
