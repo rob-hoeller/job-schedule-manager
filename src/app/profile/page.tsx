@@ -3,12 +3,10 @@
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { createClient } from "@/lib/supabase-browser";
-import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
   const { user, displayName } = useAuth();
   const supabase = createClient();
-  const router = useRouter();
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -74,6 +72,7 @@ export default function ProfilePage() {
 
   return (
     <main className="mx-auto flex h-dvh max-w-lg flex-col px-4 py-8 sm:px-6">
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
       <a
         href="/"
         className="mb-6 self-start text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
