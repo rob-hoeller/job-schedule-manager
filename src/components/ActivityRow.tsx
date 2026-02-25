@@ -176,6 +176,16 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
                 <DepList deps={successors} labelRid="successor_jsa_rid" activityMap={activityMap} />
               </div>
             </div>
+            {onEditClick && (
+              <div className="mt-3 flex justify-end">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEditClick(a); }}
+                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                >
+                  Edit Activity
+                </button>
+              </div>
+            )}
           </td>
         </tr>
       )}

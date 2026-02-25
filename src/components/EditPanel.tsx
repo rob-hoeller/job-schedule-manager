@@ -25,10 +25,8 @@ export function EditPanel({ activity, onClose, onStageEdit, onStatusUpdate, onAc
   const [saving, setSaving] = useState(false);
 
   // Status
-  const [showStatusModal, setShowStatusModal] = useState(initialMode === "status");
-  const [pendingStatus, setPendingStatus] = useState<string>(
-    initialMode === "status" ? (activity.status === "Completed" ? "Approved" : "Completed") : ""
-  );
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<string>("");
   const [statusNote, setStatusNote] = useState("");
   const [savingStatus, setSavingStatus] = useState(false);
 
