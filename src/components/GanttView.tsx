@@ -9,7 +9,8 @@ import { parseLocalDate } from "@/lib/utils";
 const ROW_H = 32;
 const BAR_H = 20;
 const BAR_Y_OFFSET = (ROW_H - BAR_H) / 2;
-const HEADER_H = 48;
+const HEADER_H = 58;
+const WEEKDAY_ABBR = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const LABEL_W = 280;
 
 /* ── colour fills for SVG bars (darker shades for white text legibility) ── */
@@ -452,9 +453,14 @@ function GanttChart({
                   </text>
                 )}
                 {(colW >= 44 || isFirst) && (
-                  <text x={x + colW / 2} y={HEADER_H - 6} textAnchor="middle" className={`text-[9px] ${isOffDay ? "fill-gray-400 dark:fill-gray-600" : "fill-gray-500 dark:fill-gray-400"}`}>
-                    {colW >= 60 ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : d.getDate()}
-                  </text>
+                  <>
+                    <text x={x + colW / 2} y={HEADER_H - 18} textAnchor="middle" className={`text-[8px] font-medium ${isOffDay ? "fill-gray-400 dark:fill-gray-600" : "fill-gray-500 dark:fill-gray-400"}`}>
+                      {WEEKDAY_ABBR[d.getDay()]}
+                    </text>
+                    <text x={x + colW / 2} y={HEADER_H - 6} textAnchor="middle" className={`text-[9px] ${isOffDay ? "fill-gray-400 dark:fill-gray-600" : "fill-gray-500 dark:fill-gray-400"}`}>
+                      {colW >= 60 ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : d.getDate()}
+                    </text>
+                  </>
                 )}
                 {isFirst && (
                   <line x1={x} y1={0} x2={x} y2={HEADER_H} className="stroke-gray-200 dark:stroke-gray-800" strokeWidth={0.5} />

@@ -54,10 +54,9 @@ export function EditPanel({ activity, onClose, onStageEdit, onStatusUpdate, onAc
   }
 
   async function handleStatusConfirm() {
-    if (!statusNote.trim()) return;
     setSavingStatus(true);
     try {
-      await onStatusUpdate(activity.jsa_rid, pendingStatus, statusNote);
+      await onStatusUpdate(activity.jsa_rid, pendingStatus, statusNote || `Status changed to ${pendingStatus}`);
       toast.success(`Status updated to ${pendingStatus}`);
       setShowStatusModal(false);
       onActivityUpdated?.();
@@ -213,24 +212,24 @@ export function EditPanel({ activity, onClose, onStageEdit, onStatusUpdate, onAc
                 <span className="text-gray-500 dark:text-gray-400">Status: </span>
                 <span className="font-medium">{activity.status}</span>
               </div>
-              <div className="flex gap-2">
-                {activity.status !== "Completed" && (
-                  <button
-                    onClick={() => { setPendingStatus("Completed"); setShowStatusModal(true); }}
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-                  >
-                    Mark Completed
-                  </button>
-                )}
-                {activity.status !== "Approved" && (
+              {activity.status !== "Approved" && (
+                <div className="flex gap-2">
+                  {activity.status !== "Completed" && (
+                    <button
+                      onClick={() => { setPendingStatus("Completed"); setShowStatusModal(true); }}
+                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+                    >
+                      Mark Completed
+                    </button>
+                  )}
                   <button
                     onClick={() => { setPendingStatus("Approved"); setShowStatusModal(true); }}
                     className="rounded-lg border border-green-300 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/30"
                   >
                     Mark Approved
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -245,7 +244,7 @@ export function EditPanel({ activity, onClose, onStageEdit, onStatusUpdate, onAc
               New Status: <span className="font-medium">{pendingStatus}</span>
             </p>
             <div className="mb-3">
-              <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">Note (required)</label>
+              <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">Note (optional)</label>
               <textarea
                 value={statusNote}
                 onChange={(e) => setStatusNote(e.target.value)}
@@ -260,7 +259,7 @@ export function EditPanel({ activity, onClose, onStageEdit, onStatusUpdate, onAc
               </button>
               <button
                 onClick={handleStatusConfirm}
-                disabled={savingStatus || !statusNote.trim()}
+                disabled={savingStatus}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
               >
                 {savingStatus ? "Updating…" : "Confirm"}

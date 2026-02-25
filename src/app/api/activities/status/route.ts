@@ -14,7 +14,6 @@ export async function POST(request: NextRequest) {
   const { jsa_rid, schedule_rid, status, publish_note } = body;
 
   if (!jsa_rid || !schedule_rid || !status) return badRequest("Missing required fields");
-  if (!publish_note || !publish_note.trim()) return badRequest("Publish note is required");
   if (status !== "Completed" && status !== "Approved") {
     return badRequest("Status must be 'Completed' or 'Approved'");
   }
@@ -33,6 +32,7 @@ export async function POST(request: NextRequest) {
 
   const oldStatus = activity.status;
   if (oldStatus === status) return badRequest("Status is already " + status);
+  if (oldStatus === "Approved") return badRequest("Cannot change status — activity is already Approved");
 
   // Create publish event
   const { data: publishEvent, error: pubError } = await sb
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     .insert({
       user_id: user.id,
       job_schedule_rid: schedule_rid,
-      publish_note: publish_note.trim(),
+      publish_note: publish_note?.trim() || `Status changed to ${status}`,
       move_types: ["status_update"],
       change_count: 1,
       direct_edit_count: 1,
