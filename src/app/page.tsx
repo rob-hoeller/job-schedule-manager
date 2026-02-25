@@ -10,6 +10,7 @@ import { GanttView } from "@/components/GanttView";
 import { ViewTabs } from "@/components/ViewTabs";
 import { NavBar } from "@/components/NavBar";
 import { EditPanel } from "@/components/EditPanel";
+import type { EditPanelMode } from "@/components/EditPanel";
 import { StagingToolbar } from "@/components/StagingToolbar";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useCalendarDays } from "@/hooks/useCalendarDays";
@@ -26,6 +27,7 @@ export default function Home() {
   const staging = useStaging(job?.schedule_rid ?? null);
 
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [editMode, setEditMode] = useState<EditPanelMode | undefined>();
 
   // Merge staged changes into activities for visual preview
   const effectiveActivities = useMemo(() => {
@@ -49,8 +51,9 @@ export default function Home() {
     [activities],
   );
 
-  const handleActivityClick = useCallback((activity: Activity) => {
+  const handleActivityClick = useCallback((activity: Activity, mode?: EditPanelMode) => {
     setEditingActivity(activity);
+    setEditMode(mode);
   }, []);
 
   const handlePublished = useCallback(() => {
@@ -138,6 +141,7 @@ export default function Home() {
           onStatusUpdate={staging.updateStatus}
           onActivityUpdated={handleActivityUpdated}
           stagedFields={staging.byActivity.get(editingActivity.jsa_rid)}
+          initialMode={editMode}
         />
       )}
     </main>

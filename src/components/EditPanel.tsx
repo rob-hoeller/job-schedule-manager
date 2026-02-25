@@ -6,6 +6,8 @@ import toast from "react-hot-toast";
 
 type Tab = "move_start" | "change_duration" | "history";
 
+export type EditPanelMode = "move_start" | "change_duration" | "status";
+
 interface Props {
   activity: Activity;
   onClose: () => void;
@@ -13,17 +15,20 @@ interface Props {
   onStatusUpdate: (jsaRid: number, status: string, note: string) => Promise<unknown>;
   onActivityUpdated?: () => void;
   stagedFields?: Map<string, { original_value: string | null; staged_value: string }>;
+  initialMode?: EditPanelMode;
 }
 
-export function EditPanel({ activity, onClose, onStageEdit, onStatusUpdate, onActivityUpdated, stagedFields }: Props) {
-  const [tab, setTab] = useState<Tab>("move_start");
+export function EditPanel({ activity, onClose, onStageEdit, onStatusUpdate, onActivityUpdated, stagedFields, initialMode }: Props) {
+  const [tab, setTab] = useState<Tab>(initialMode === "change_duration" ? "change_duration" : "move_start");
   const [newStartDate, setNewStartDate] = useState(activity.current_start_date ?? "");
   const [newDuration, setNewDuration] = useState(activity.current_duration ?? 1);
   const [saving, setSaving] = useState(false);
 
   // Status
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [pendingStatus, setPendingStatus] = useState<string>("");
+  const [showStatusModal, setShowStatusModal] = useState(initialMode === "status");
+  const [pendingStatus, setPendingStatus] = useState<string>(
+    initialMode === "status" ? (activity.status === "Completed" ? "Approved" : "Completed") : ""
+  );
   const [statusNote, setStatusNote] = useState("");
   const [savingStatus, setSavingStatus] = useState(false);
 

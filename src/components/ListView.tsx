@@ -10,7 +10,7 @@ import type { StagedChange } from "@/hooks/useStaging";
 interface Props {
   activities: Activity[];
   dependencies: Dependency[];
-  onActivityClick?: (activity: Activity) => void;
+  onActivityClick?: (activity: Activity, mode?: "move_start" | "change_duration" | "status") => void;
   stagedChanges?: Map<number, Map<string, StagedChange>>;
 }
 

@@ -12,7 +12,7 @@ interface Props {
   predecessors: Dependency[];
   successors: Dependency[];
   activityMap: Map<number, Activity>;
-  onEditClick?: (activity: Activity) => void;
+  onEditClick?: (activity: Activity, mode?: "move_start" | "change_duration" | "status") => void;
   isStaged?: boolean;
   isCascaded?: boolean;
   stagedFields?: Map<string, StagedChange>;
@@ -94,35 +94,35 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
           </div>
         </td>
         {/* Mobile start date */}
-        <td className="px-3 py-2.5 text-center text-xs md:hidden">
-          <span className={stagedFields?.has("start_date") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}>
+        <td className="px-3 py-2.5 text-center text-xs md:hidden" onClick={(e) => { if (onEditClick) { e.stopPropagation(); onEditClick(a, "move_start"); } }}>
+          <span className={`${onEditClick ? "cursor-pointer hover:underline" : ""} ${stagedFields?.has("start_date") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}`}>
             {formatDateCompact(a.current_start_date)}
           </span>
         </td>
         <td className="hidden px-3 py-2.5 text-sm sm:table-cell">{a.trade_partner_name ?? "—"}</td>
         {/* Status: dot on mobile, badge on desktop */}
-        <td className="px-3 py-2.5 text-center">
-          <span className="md:hidden">
+        <td className="px-3 py-2.5 text-center" onClick={(e) => { if (onEditClick && a.status !== "Approved") { e.stopPropagation(); onEditClick(a, "status"); } }}>
+          <span className={`md:hidden ${onEditClick && a.status !== "Approved" ? "cursor-pointer" : ""}`}>
             <span className={`inline-block h-2.5 w-2.5 rounded-full ${STATUS_DOT[a.status] ?? "bg-gray-400"}`} title={a.status} />
           </span>
-          <span className="hidden md:inline">
+          <span className={`hidden md:inline ${onEditClick && a.status !== "Approved" ? "cursor-pointer" : ""}`}>
             <StatusBadge status={a.status} />
           </span>
         </td>
-        <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell">
-          <span className={stagedFields?.has("start_date") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}>
+        <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell" onClick={(e) => { if (onEditClick) { e.stopPropagation(); onEditClick(a, "move_start"); } }}>
+          <span className={`${onEditClick ? "cursor-pointer hover:underline" : ""} ${stagedFields?.has("start_date") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}`}>
             {formatDateCompact(a.current_start_date)}
           </span>
           <Drift original={a.original_start_date} current={a.current_start_date} />
         </td>
-        <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell">
-          <span className={stagedFields?.has("end_date") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}>
+        <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell" onClick={(e) => { if (onEditClick) { e.stopPropagation(); onEditClick(a, "change_duration"); } }}>
+          <span className={`${onEditClick ? "cursor-pointer hover:underline" : ""} ${stagedFields?.has("end_date") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}`}>
             {formatDateCompact(a.current_end_date)}
           </span>
           <Drift original={a.original_end_date} current={a.current_end_date} />
         </td>
-        <td className="hidden px-3 py-2.5 text-sm text-center lg:table-cell">
-          <span className={stagedFields?.has("duration") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}>
+        <td className="hidden px-3 py-2.5 text-sm text-center lg:table-cell" onClick={(e) => { if (onEditClick) { e.stopPropagation(); onEditClick(a, "change_duration"); } }}>
+          <span className={`${onEditClick ? "cursor-pointer hover:underline" : ""} ${stagedFields?.has("duration") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}`}>
             {a.current_duration ?? "—"}
           </span>
           <DurationDrift original={a.original_duration} current={a.current_duration} />
@@ -176,16 +176,6 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
                 <DepList deps={successors} labelRid="successor_jsa_rid" activityMap={activityMap} />
               </div>
             </div>
-            {onEditClick && (
-              <div className="mt-3 flex justify-end">
-                <button
-                  onClick={(e) => { e.stopPropagation(); onEditClick(a); }}
-                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-                >
-                  Edit Activity
-                </button>
-              </div>
-            )}
           </td>
         </tr>
       )}
