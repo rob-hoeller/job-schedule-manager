@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Dependency, CalendarDay } from "@/types";
 import { ActivityDetailPopup } from "./ActivityDetailPopup";
 import { parseLocalDate } from "@/lib/utils";
@@ -236,7 +236,6 @@ export function GanttView({ activities, dependencies, calendarDays, onActivityCl
             chartW={chartW}
             chartH={chartH}
             todayOffset={todayOffset}
-            highlightedRow={highlightedRow}
             isMobile
             onBarClick={handleBarClick}
                 stagedChanges={stagedChanges}
@@ -288,7 +287,6 @@ export function GanttView({ activities, dependencies, calendarDays, onActivityCl
             chartW={chartW}
             chartH={chartH}
             todayOffset={todayOffset}
-            highlightedRow={highlightedRow}
             onBarClick={handleBarClick}
                 stagedChanges={stagedChanges}
           />
@@ -375,7 +373,6 @@ export function GanttView({ activities, dependencies, calendarDays, onActivityCl
                 chartW={chartW}
                 chartH={chartH}
                 todayOffset={todayOffset}
-                highlightedRow={highlightedRow}
                 onBarClick={handleBarClick}
                 stagedChanges={stagedChanges}
               />
@@ -398,8 +395,40 @@ export function GanttView({ activities, dependencies, calendarDays, onActivityCl
   );
 }
 
+/* ── Background grid (memoized to avoid re-render on scroll) ── */
+const GanttBackground = memo(function GanttBackground({
+  dates, colW, chartH, chartW, rowCount, calendarDays,
+}: {
+  dates: Date[]; colW: number; chartH: number; chartW: number; rowCount: number; calendarDays: Map<string, CalendarDay>;
+}) {
+  const monthLines: string[] = [];
+  const dayLines: string[] = [];
+  const offDayRects: React.ReactNode[] = [];
+  dates.forEach((d, i) => {
+    const x = i * colW;
+    if (d.getDate() === 1) monthLines.push(`M${x},0V${chartH}`);
+    else dayLines.push(`M${x},0V${chartH}`);
+    const key = toKey(d);
+    const cd = calendarDays.get(key);
+    const isOffDay = cd ? cd.is_workday === 0 : (d.getDay() === 0 || d.getDay() === 6);
+    if (isOffDay) offDayRects.push(<rect key={`off-${i}`} x={x} y={0} width={colW} height={chartH} />);
+  });
+  const rowStripes: React.ReactNode[] = [];
+  for (let i = 1; i < rowCount; i += 2) {
+    rowStripes.push(<rect key={`row-${i}`} x={0} y={i * ROW_H} width={chartW} height={ROW_H} />);
+  }
+  return (
+    <>
+      <path d={dayLines.join("")} className="stroke-gray-400/80 dark:stroke-gray-800/80" strokeWidth={0.5} fill="none" />
+      <path d={monthLines.join("")} className="stroke-gray-400 dark:stroke-gray-700" strokeWidth={1} fill="none" />
+      <g className="fill-gray-100/60 dark:fill-gray-800/30">{offDayRects}</g>
+      <g className="fill-gray-50/40 dark:fill-gray-900/20">{rowStripes}</g>
+    </>
+  );
+});
+
 /* ── SVG chart (shared between mobile/desktop) ── */
-function GanttChart({
+const GanttChart = memo(function GanttChart({
   sorted,
   rowIndex,
   dependencies,
@@ -411,7 +440,6 @@ function GanttChart({
   chartW,
   chartH,
   todayOffset,
-  highlightedRow,
   isMobile = false,
   onBarClick,
   stagedChanges,
@@ -427,7 +455,6 @@ function GanttChart({
   chartW: number;
   chartH: number;
   todayOffset: number | null;
-  highlightedRow: number | null;
   isMobile?: boolean;
   onBarClick: (a: Activity) => void;
   stagedChanges?: Map<number, Map<string, StagedChange>>;
@@ -474,58 +501,8 @@ function GanttChart({
 
       {/* ── Chart body ── */}
       <svg width={chartW} height={chartH} className="select-none">
-      {/* ── Column separators ── */}
-      {dates.map((d, i) => {
-        const isFirst = d.getDate() === 1;
-        
-        // Draw stronger lines for month starts only
-        if (isFirst) {
-          return (
-            <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-400 dark:stroke-gray-700" strokeWidth={1} />
-          );
-        }
-        
-        // Draw day lines (darker gray in light mode for visibility)
-        return (
-          <line key={`col-${toKey(d)}`} x1={i * colW} y1={0} x2={i * colW} y2={chartH} className="stroke-gray-400/80 dark:stroke-gray-800/80" strokeWidth={0.5} />
-        );
-      })}
-
-      {/* ── Non-workday bands ── */}
-      {dates.map((d, i) => {
-        const key = toKey(d);
-        const cd = calendarDays.get(key);
-        const isOffDay = cd ? cd.is_workday === 0 : (d.getDay() === 0 || d.getDay() === 6);
-        if (!isOffDay) return null;
-        return (
-          <rect
-            key={`off-${key}`}
-            x={i * colW}
-            y={0}
-            width={colW}
-            height={chartH}
-            className="fill-gray-100/60 dark:fill-gray-800/30"
-          />
-        );
-      })}
-
-      {/* ── Row stripes ── */}
-      {sorted.map((_, i) => (
-        <rect
-          key={`row-${i}`}
-          x={0}
-          y={i * ROW_H}
-          width={chartW}
-          height={ROW_H}
-          className={
-            highlightedRow === i
-              ? "fill-blue-50 dark:fill-blue-950/40"
-              : i % 2 === 0
-                ? "fill-transparent"
-                : "fill-gray-50/40 dark:fill-gray-900/20"
-          }
-        />
-      ))}
+      {/* ── Background: columns, off-days, row stripes (batched paths) ── */}
+      <GanttBackground dates={dates} colW={colW} chartH={chartH} chartW={chartW} rowCount={sorted.length} calendarDays={calendarDays} />
 
       {/* ── Dependency arrows ── */}
       <g className="pointer-events-none">
@@ -611,7 +588,7 @@ function GanttChart({
               height={BAR_H}
               rx={3}
               fill={fill(a.status)}
-              className="transition-colors hover:brightness-90"
+              className="hover:brightness-90"
               strokeDasharray={isStaged ? "4 2" : undefined}
               stroke={isStaged ? (isCascaded ? "#f97316" : "#f59e0b") : undefined}
               strokeWidth={isStaged ? 2 : undefined}
@@ -653,4 +630,4 @@ function GanttChart({
     </svg>
     </div>
   );
-}
+});
