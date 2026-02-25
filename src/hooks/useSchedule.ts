@@ -28,22 +28,11 @@ export function useSchedule(scheduleRid: number | null) {
   const [dependencies, setDependencies] = useState<Dependency[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [isInitial, setIsInitial] = useState(true);
 
+  /** Silent refresh — updates data in place without loading flash */
   const refresh = useCallback(() => {
-    setRefreshKey((k) => k + 1);
-  }, []);
-
-  useEffect(() => {
-    if (!scheduleRid) {
-      setActivities([]);
-      setDependencies([]);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
+    if (!scheduleRid) return;
     Promise.all([
       fetchAll<Activity>("job_schedule_activities", "schedule_rid", scheduleRid),
       fetchAll<Dependency>("job_schedule_activity_dependencies", "schedule_rid", scheduleRid),
@@ -53,9 +42,34 @@ export function useSchedule(scheduleRid: number | null) {
         setActivities(acts);
         setDependencies(deps);
       })
+      .catch((e) => setError(e.message));
+  }, [scheduleRid]);
+
+  useEffect(() => {
+    if (!scheduleRid) {
+      setActivities([]);
+      setDependencies([]);
+      setIsInitial(true);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setIsInitial(true);
+
+    Promise.all([
+      fetchAll<Activity>("job_schedule_activities", "schedule_rid", scheduleRid),
+      fetchAll<Dependency>("job_schedule_activity_dependencies", "schedule_rid", scheduleRid),
+    ])
+      .then(([acts, deps]) => {
+        acts.sort((a, b) => (a.current_start_date ?? "").localeCompare(b.current_start_date ?? ""));
+        setActivities(acts);
+        setDependencies(deps);
+        setIsInitial(false);
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [scheduleRid, refreshKey]);
+  }, [scheduleRid]);
 
-  return { activities, dependencies, loading, error, refresh };
+  return { activities, dependencies, loading: loading && isInitial, error, refresh };
 }
