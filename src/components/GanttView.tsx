@@ -237,6 +237,7 @@ export function GanttView({ activities, dependencies, calendarDays, onActivityCl
             chartH={chartH}
             todayOffset={todayOffset}
             isMobile
+            scrollRef={mobileChartRef}
             onBarClick={handleBarClick}
                 stagedChanges={stagedChanges}
           />
@@ -289,6 +290,7 @@ export function GanttView({ activities, dependencies, calendarDays, onActivityCl
             todayOffset={todayOffset}
             onBarClick={handleBarClick}
                 stagedChanges={stagedChanges}
+            scrollRef={chartRef}
           />
         </div>
       </div>
@@ -375,6 +377,7 @@ export function GanttView({ activities, dependencies, calendarDays, onActivityCl
                 todayOffset={todayOffset}
                 onBarClick={handleBarClick}
                 stagedChanges={stagedChanges}
+                scrollRef={fsChartRef}
               />
             </div>
           </div>
@@ -427,8 +430,26 @@ const GanttBackground = memo(function GanttBackground({
   );
 });
 
+/* ── Viewport hook for scroll-based culling ── */
+function useViewport(scrollRef: React.RefObject<HTMLElement | null>) {
+  const [vp, setVp] = useState({ scrollX: 0, scrollY: 0, width: 2000, height: 1200 });
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      setVp({ scrollX: el.scrollLeft, scrollY: el.scrollTop, width: el.clientWidth, height: el.clientHeight });
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => { el.removeEventListener("scroll", update); ro.disconnect(); };
+  }, [scrollRef]);
+  return vp;
+}
+
 /* ── SVG chart (shared between mobile/desktop) ── */
-const GanttChart = memo(function GanttChart({
+function GanttChart({
   sorted,
   rowIndex,
   dependencies,
@@ -443,6 +464,7 @@ const GanttChart = memo(function GanttChart({
   isMobile = false,
   onBarClick,
   stagedChanges,
+  scrollRef,
 }: {
   sorted: Activity[];
   rowIndex: Map<number, number>;
@@ -458,16 +480,39 @@ const GanttChart = memo(function GanttChart({
   isMobile?: boolean;
   onBarClick: (a: Activity) => void;
   stagedChanges?: Map<number, Map<string, StagedChange>>;
+  scrollRef: React.RefObject<HTMLElement | null>;
 }) {
+  const BUFFER = 200; // px buffer around viewport
+  const vp = useViewport(scrollRef);
+  const vpLeft = vp.scrollX - BUFFER;
+  const vpRight = vp.scrollX + vp.width + BUFFER;
+  const vpTop = vp.scrollY - HEADER_H - BUFFER;
+  const vpBottom = vp.scrollY + vp.height + BUFFER;
+
+  // Visible column range
+  const colStart = Math.max(0, Math.floor(vpLeft / colW));
+  const colEnd = Math.min(dates.length, Math.ceil(vpRight / colW));
+  // Visible row range
+  const rowStart = Math.max(0, Math.floor(vpTop / ROW_H));
+  const rowEnd = Math.min(sorted.length, Math.ceil(vpBottom / ROW_H));
+
+  // Visible header dates
+  const visibleHeaderDates = useMemo(() => {
+    const result: { d: Date; i: number; key: string }[] = [];
+    for (let i = colStart; i < colEnd; i++) {
+      result.push({ d: dates[i], i, key: toKey(dates[i]) });
+    }
+    return result;
+  }, [dates, colStart, colEnd]);
+
   return (
     <div style={{ width: chartW }}>
       {/* ── Sticky header ── */}
       <div className="sticky top-0 z-10">
         <svg width={chartW} height={HEADER_H} className="select-none">
           <rect x={0} y={0} width={chartW} height={HEADER_H} className="fill-gray-50 dark:fill-gray-900" />
-          {dates.map((d, i) => {
+          {visibleHeaderDates.map(({ d, i, key }) => {
             const x = i * colW;
-            const key = toKey(d);
             const cd = calendarDays.get(key);
             const isOffDay = cd ? cd.is_workday === 0 : (d.getDay() === 0 || d.getDay() === 6);
             const isFirst = d.getDate() === 1;
@@ -504,12 +549,18 @@ const GanttChart = memo(function GanttChart({
       {/* ── Background: columns, off-days, row stripes (batched paths) ── */}
       <GanttBackground dates={dates} colW={colW} chartH={chartH} chartW={chartW} rowCount={sorted.length} calendarDays={calendarDays} />
 
-      {/* ── Dependency arrows ── */}
+      {/* ── Dependency arrows (only if either end is visible) ── */}
       <g className="pointer-events-none">
         {dependencies.map((d) => {
           const predIdx = rowIndex.get(d.predecessor_jsa_rid);
           const succIdx = rowIndex.get(d.successor_jsa_rid);
           if (predIdx === undefined || succIdx === undefined) return null;
+
+          // Row culling: skip if both rows are outside viewport
+          const minRow = Math.min(predIdx, succIdx);
+          const maxRow = Math.max(predIdx, succIdx);
+          if (maxRow < rowStart || minRow > rowEnd) return null;
+
           const pred = activityMap.get(d.predecessor_jsa_rid);
           const succ = activityMap.get(d.successor_jsa_rid);
           if (!pred || !succ) return null;
@@ -520,15 +571,20 @@ const GanttChart = memo(function GanttChart({
 
           let fromX: number;
           if (d.dependency_type === "FS") {
-            fromX = predEnd * colW; // end of predecessor
+            fromX = predEnd * colW;
           } else {
-            fromX = predStart * colW; // start of predecessor (SS)
+            fromX = predStart * colW;
           }
           const toX = succStart * colW;
+
+          // Column culling: skip if entirely outside viewport
+          const minX = Math.min(fromX, toX);
+          const maxX = Math.max(fromX, toX);
+          if (maxX < vpLeft || minX > vpRight) return null;
+
           const fromY = predIdx * ROW_H + ROW_H / 2;
           const toY = succIdx * ROW_H + ROW_H / 2;
 
-          // Path: horizontal out, then vertical, then horizontal to target
           const midX = d.dependency_type === "FS"
             ? Math.max(fromX + 8, toX - 8)
             : Math.min(fromX - 8, toX - 8);
@@ -551,7 +607,6 @@ const GanttChart = memo(function GanttChart({
                 className={strokeClass}
                 strokeWidth={1}
               />
-              {/* Arrow head */}
               <polygon
                 points={`${toX},${toY} ${toX - 4},${toY - 3} ${toX - 4},${toY + 3}`}
                 className={fillClass}
@@ -561,15 +616,22 @@ const GanttChart = memo(function GanttChart({
         })}
       </g>
 
-      {/* ── Activity bars ── */}
+      {/* ── Activity bars (viewport-culled) ── */}
       {sorted.map((a, i) => {
         if (!a.current_start_date) return null;
+        // Row culling
+        if (i < rowStart || i > rowEnd) return null;
+
         const sd = parseLocalDate(a.current_start_date);
         const ed = a.current_end_date ? parseLocalDate(a.current_end_date) : sd;
         const startOff = daysBetween(startDate, sd);
         const span = daysBetween(sd, ed) + 1;
         const x = startOff * colW;
         const w = Math.max(span * colW - 2, 4);
+
+        // Column culling
+        if (x + w < vpLeft || x > vpRight) return null;
+
         const y = i * ROW_H + BAR_Y_OFFSET;
 
         const isStaged = stagedChanges?.has(a.jsa_rid) ?? false;
@@ -593,7 +655,6 @@ const GanttChart = memo(function GanttChart({
               stroke={isStaged ? (isCascaded ? "#f97316" : "#f59e0b") : undefined}
               strokeWidth={isStaged ? 2 : undefined}
             />
-            {/* Label on bar */}
             {(isMobile ? w > 16 : w > 50) && (
               <text
                 x={x + 4}
@@ -630,4 +691,4 @@ const GanttChart = memo(function GanttChart({
     </svg>
     </div>
   );
-});
+}
