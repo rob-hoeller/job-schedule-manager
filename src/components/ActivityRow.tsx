@@ -5,11 +5,17 @@ import type { Activity, Dependency } from "@/types";
 import { StatusBadge } from "./StatusBadge";
 import { formatDate, formatDateCompact, dayDrift, driftClass, driftLabel, STATUS_DOT } from "@/lib/utils";
 
+import type { StagedChange } from "@/hooks/useStaging";
+
 interface Props {
   activity: Activity;
   predecessors: Dependency[];
   successors: Dependency[];
   activityMap: Map<number, Activity>;
+  onEditClick?: (activity: Activity, mode?: "move_start" | "change_duration" | "status") => void;
+  isStaged?: boolean;
+  isCascaded?: boolean;
+  stagedFields?: Map<string, StagedChange>;
 }
 
 function Drift({ original, current }: { original: string | null; current: string | null }) {
@@ -60,46 +66,65 @@ function DepList({
   );
 }
 
-export function ActivityRow({ activity: a, predecessors, successors, activityMap }: Props) {
+export function ActivityRow({ activity: a, predecessors, successors, activityMap, onEditClick, isStaged, isCascaded, stagedFields }: Props) {
   const [open, setOpen] = useState(false);
   const changed = hasDateChanges(a);
+
+  const rowHighlight = isStaged
+    ? isCascaded
+      ? "border-l-2 border-l-orange-400 bg-orange-50/50 dark:bg-orange-950/20"
+      : "border-l-2 border-l-amber-400 bg-amber-50/50 dark:bg-amber-950/20"
+    : "";
 
   return (
     <>
       <tr
         onClick={() => setOpen(!open)}
-        className="cursor-pointer border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900/50"
+        className={`cursor-pointer border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900/50 ${rowHighlight}`}
       >
         <td className="px-3 py-2.5 text-sm">
           <div className="flex items-center gap-2">
             <span className={`text-xs transition ${open ? "rotate-90" : ""}`}>▶</span>
             {a.description}
+            {isStaged && (
+              <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${isCascaded ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
+                {isCascaded ? "Cascaded" : "Staged"}
+              </span>
+            )}
           </div>
         </td>
         {/* Mobile start date */}
-        <td className="px-3 py-2.5 text-center text-xs md:hidden">
-          {formatDateCompact(a.current_start_date)}
+        <td className="px-3 py-2.5 text-center text-xs md:hidden" onClick={(e) => { if (onEditClick) { e.stopPropagation(); onEditClick(a, "move_start"); } }}>
+          <span className={`${onEditClick ? "cursor-pointer hover:underline" : ""} ${stagedFields?.has("start_date") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}`}>
+            {formatDateCompact(a.current_start_date)}
+          </span>
         </td>
         <td className="hidden px-3 py-2.5 text-sm sm:table-cell">{a.trade_partner_name ?? "—"}</td>
         {/* Status: dot on mobile, badge on desktop */}
-        <td className="px-3 py-2.5 text-center">
-          <span className="md:hidden">
+        <td className="px-3 py-2.5 text-center" onClick={(e) => { if (onEditClick && a.status !== "Approved") { e.stopPropagation(); onEditClick(a, "status"); } }}>
+          <span className={`md:hidden ${onEditClick && a.status !== "Approved" ? "cursor-pointer" : ""}`}>
             <span className={`inline-block h-2.5 w-2.5 rounded-full ${STATUS_DOT[a.status] ?? "bg-gray-400"}`} title={a.status} />
           </span>
-          <span className="hidden md:inline">
+          <span className={`hidden md:inline ${onEditClick && a.status !== "Approved" ? "cursor-pointer" : ""}`}>
             <StatusBadge status={a.status} />
           </span>
         </td>
-        <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell">
-          {formatDateCompact(a.current_start_date)}
+        <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell" onClick={(e) => { if (onEditClick) { e.stopPropagation(); onEditClick(a, "move_start"); } }}>
+          <span className={`${onEditClick ? "cursor-pointer hover:underline" : ""} ${stagedFields?.has("start_date") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}`}>
+            {formatDateCompact(a.current_start_date)}
+          </span>
           <Drift original={a.original_start_date} current={a.current_start_date} />
         </td>
-        <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell">
-          {formatDateCompact(a.current_end_date)}
+        <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell" onClick={(e) => { if (onEditClick) { e.stopPropagation(); onEditClick(a, "change_duration"); } }}>
+          <span className={`${onEditClick ? "cursor-pointer hover:underline" : ""} ${stagedFields?.has("end_date") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}`}>
+            {formatDateCompact(a.current_end_date)}
+          </span>
           <Drift original={a.original_end_date} current={a.current_end_date} />
         </td>
-        <td className="hidden px-3 py-2.5 text-sm text-center lg:table-cell">
-          {a.current_duration ?? "—"}
+        <td className="hidden px-3 py-2.5 text-sm text-center lg:table-cell" onClick={(e) => { if (onEditClick) { e.stopPropagation(); onEditClick(a, "change_duration"); } }}>
+          <span className={`${onEditClick ? "cursor-pointer hover:underline" : ""} ${stagedFields?.has("duration") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}`}>
+            {a.current_duration ?? "—"}
+          </span>
           <DurationDrift original={a.original_duration} current={a.current_duration} />
         </td>
       </tr>
@@ -151,6 +176,16 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
                 <DepList deps={successors} labelRid="successor_jsa_rid" activityMap={activityMap} />
               </div>
             </div>
+            {onEditClick && (
+              <div className="mt-3 flex justify-end">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEditClick(a); }}
+                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                >
+                  Edit Activity
+                </button>
+              </div>
+            )}
           </td>
         </tr>
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Activity, Dependency } from "@/types";
 
@@ -28,17 +28,11 @@ export function useSchedule(scheduleRid: number | null) {
   const [dependencies, setDependencies] = useState<Dependency[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isInitial, setIsInitial] = useState(true);
 
-  useEffect(() => {
-    if (!scheduleRid) {
-      setActivities([]);
-      setDependencies([]);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
+  /** Silent refresh — updates data in place without loading flash */
+  const refresh = useCallback(() => {
+    if (!scheduleRid) return;
     Promise.all([
       fetchAll<Activity>("job_schedule_activities", "schedule_rid", scheduleRid),
       fetchAll<Dependency>("job_schedule_activity_dependencies", "schedule_rid", scheduleRid),
@@ -48,9 +42,34 @@ export function useSchedule(scheduleRid: number | null) {
         setActivities(acts);
         setDependencies(deps);
       })
+      .catch((e) => setError(e.message));
+  }, [scheduleRid]);
+
+  useEffect(() => {
+    if (!scheduleRid) {
+      setActivities([]);
+      setDependencies([]);
+      setIsInitial(true);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setIsInitial(true);
+
+    Promise.all([
+      fetchAll<Activity>("job_schedule_activities", "schedule_rid", scheduleRid),
+      fetchAll<Dependency>("job_schedule_activity_dependencies", "schedule_rid", scheduleRid),
+    ])
+      .then(([acts, deps]) => {
+        acts.sort((a, b) => (a.current_start_date ?? "").localeCompare(b.current_start_date ?? ""));
+        setActivities(acts);
+        setDependencies(deps);
+        setIsInitial(false);
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [scheduleRid]);
 
-  return { activities, dependencies, loading, error };
+  return { activities, dependencies, loading: loading && isInitial, error, refresh };
 }

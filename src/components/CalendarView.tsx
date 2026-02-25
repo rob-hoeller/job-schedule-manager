@@ -42,10 +42,14 @@ function activityDayNum(activity: Activity, dateKey: string): number {
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const VISIBLE_BARS = 3;
 
+import type { StagedChange } from "@/hooks/useStaging";
+
 interface Props {
   activities: Activity[];
   dependencies: Dependency[];
   calendarDays: Map<string, CalendarDay>;
+  onActivityClick?: (activity: Activity) => void;
+  stagedChanges?: Map<number, Map<string, StagedChange>>;
 }
 
 /* ── detail popup ── */
@@ -199,7 +203,7 @@ function MobileView({
 }
 
 /* ── main component ── */
-export function CalendarView({ activities, dependencies, calendarDays }: Props) {
+export function CalendarView({ activities, dependencies, calendarDays, onActivityClick, stagedChanges }: Props) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -348,11 +352,18 @@ export function CalendarView({ activities, dependencies, calendarDays }: Props) 
                     {acts.slice(0, VISIBLE_BARS).map((a) => {
                       const dayNum = activityDayNum(a, key);
                       const dayTag = dayNum > 1 ? ` - Day ${dayNum}` : "";
+                      const staged = stagedChanges?.has(a.jsa_rid);
+                      const cascaded = staged && ![...(stagedChanges!.get(a.jsa_rid)!.values())].some((c) => c.is_direct_edit);
+                      const stagingClass = staged
+                        ? cascaded
+                          ? "ring-2 ring-orange-400 ring-offset-1"
+                          : "ring-2 ring-amber-400 ring-offset-1"
+                        : "";
                       return (
                         <button
                           key={a.job_schedule_activity_id}
-                          onClick={() => setSelected(a)}
-                          className={`block w-full truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight text-white transition hover:opacity-80 ${barColor(a.status)}`}
+                          onClick={() => onActivityClick ? onActivityClick(a) : setSelected(a)}
+                          className={`block w-full truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight text-white transition hover:opacity-80 ${barColor(a.status)} ${stagingClass}`}
                           title={`${a.description}${dayTag}`}
                         >
                           {a.description}{dayTag}
