@@ -170,6 +170,7 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
                     ? ![...(stagedChanges.get(a.jsa_rid)?.values() ?? [])].some((c) => c.is_direct_edit)
                     : false
                 }
+                stagedFields={stagedChanges?.get(a.jsa_rid)}
               />
             ))}
           </tbody>

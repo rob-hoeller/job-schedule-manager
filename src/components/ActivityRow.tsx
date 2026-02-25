@@ -5,6 +5,8 @@ import type { Activity, Dependency } from "@/types";
 import { StatusBadge } from "./StatusBadge";
 import { formatDate, formatDateCompact, dayDrift, driftClass, driftLabel, STATUS_DOT } from "@/lib/utils";
 
+import type { StagedChange } from "@/hooks/useStaging";
+
 interface Props {
   activity: Activity;
   predecessors: Dependency[];
@@ -13,6 +15,7 @@ interface Props {
   onEditClick?: (activity: Activity) => void;
   isStaged?: boolean;
   isCascaded?: boolean;
+  stagedFields?: Map<string, StagedChange>;
 }
 
 function Drift({ original, current }: { original: string | null; current: string | null }) {
@@ -63,7 +66,7 @@ function DepList({
   );
 }
 
-export function ActivityRow({ activity: a, predecessors, successors, activityMap, onEditClick, isStaged, isCascaded }: Props) {
+export function ActivityRow({ activity: a, predecessors, successors, activityMap, onEditClick, isStaged, isCascaded, stagedFields }: Props) {
   const [open, setOpen] = useState(false);
   const changed = hasDateChanges(a);
 
@@ -92,7 +95,9 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
         </td>
         {/* Mobile start date */}
         <td className="px-3 py-2.5 text-center text-xs md:hidden">
-          {formatDateCompact(a.current_start_date)}
+          <span className={stagedFields?.has("start_date") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}>
+            {formatDateCompact(a.current_start_date)}
+          </span>
         </td>
         <td className="hidden px-3 py-2.5 text-sm sm:table-cell">{a.trade_partner_name ?? "—"}</td>
         {/* Status: dot on mobile, badge on desktop */}
@@ -105,15 +110,21 @@ export function ActivityRow({ activity: a, predecessors, successors, activityMap
           </span>
         </td>
         <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell">
-          {formatDateCompact(a.current_start_date)}
+          <span className={stagedFields?.has("start_date") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}>
+            {formatDateCompact(a.current_start_date)}
+          </span>
           <Drift original={a.original_start_date} current={a.current_start_date} />
         </td>
         <td className="hidden px-3 py-2.5 text-center text-sm md:table-cell">
-          {formatDateCompact(a.current_end_date)}
+          <span className={stagedFields?.has("end_date") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}>
+            {formatDateCompact(a.current_end_date)}
+          </span>
           <Drift original={a.original_end_date} current={a.current_end_date} />
         </td>
         <td className="hidden px-3 py-2.5 text-sm text-center lg:table-cell">
-          {a.current_duration ?? "—"}
+          <span className={stagedFields?.has("duration") ? "font-semibold text-amber-600 dark:text-amber-400" : ""}>
+            {a.current_duration ?? "—"}
+          </span>
           <DurationDrift original={a.original_duration} current={a.current_duration} />
         </td>
       </tr>

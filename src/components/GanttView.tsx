@@ -219,7 +219,7 @@ export function GanttView({ activities, dependencies, calendarDays, onActivityCl
       </div>
 
       {/* ── Mobile: chart only ── */}
-      <div className="min-h-0 flex-1 flex flex-col sm:hidden">
+      <div className={`min-h-0 flex-1 flex flex-col sm:hidden ${isFullscreen ? "hidden" : ""}`}>
         <div
           ref={mobileChartRef}
           className="gantt-chart-area relative min-h-0 flex-1 overflow-auto rounded-lg border border-gray-200 dark:border-gray-800"
@@ -245,7 +245,7 @@ export function GanttView({ activities, dependencies, calendarDays, onActivityCl
       </div>
 
       {/* ── Desktop: split panel ── */}
-      <div className="hidden min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 sm:flex dark:border-gray-800">
+      <div className={`min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800 ${isFullscreen ? "hidden" : "hidden sm:flex"}`}>
         {/* Left: activity labels */}
         <div
           className="shrink-0 border-r border-gray-200 dark:border-gray-800"

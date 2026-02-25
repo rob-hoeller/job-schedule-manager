@@ -27,6 +27,23 @@ export default function Home() {
 
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
 
+  // Merge staged changes into activities for visual preview
+  const effectiveActivities = useMemo(() => {
+    if (!staging.isActive) return activities;
+    return activities.map((a) => {
+      const staged = staging.byActivity.get(a.jsa_rid);
+      if (!staged) return a;
+      const eff = { ...a };
+      const startChange = staged.get("start_date");
+      const endChange = staged.get("end_date");
+      const durChange = staged.get("duration");
+      if (startChange) eff.current_start_date = startChange.staged_value;
+      if (endChange) eff.current_end_date = endChange.staged_value;
+      if (durChange) eff.current_duration = parseInt(durChange.staged_value);
+      return eff;
+    });
+  }, [activities, staging.isActive, staging.byActivity]);
+
   const settlement = useMemo(
     () => activities.find((a) => a.description === "Settlement") ?? null,
     [activities],
@@ -83,7 +100,7 @@ export default function Home() {
             <div className="min-h-0 flex-1">
               {view === "list" && (
                 <ListView
-                  activities={activities}
+                  activities={effectiveActivities}
                   dependencies={dependencies}
                   onActivityClick={handleActivityClick}
                   stagedChanges={staging.byActivity}
@@ -91,7 +108,7 @@ export default function Home() {
               )}
               {view === "calendar" && (
                 <CalendarView
-                  activities={activities}
+                  activities={effectiveActivities}
                   dependencies={dependencies}
                   calendarDays={calendarDays}
                   onActivityClick={handleActivityClick}
@@ -100,7 +117,7 @@ export default function Home() {
               )}
               {view === "gantt" && (
                 <GanttView
-                  activities={activities}
+                  activities={effectiveActivities}
                   dependencies={dependencies}
                   calendarDays={calendarDays}
                   onActivityClick={handleActivityClick}
