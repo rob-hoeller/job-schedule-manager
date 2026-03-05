@@ -82,7 +82,7 @@ export default function Home() {
       <div className="mb-3 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <JobSelector onSelect={setJob} />
         {job && (
-          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2">
             <ViewTabs active={view} onChange={setView} />
             <button
               onClick={() => setShowScheduleHistory(true)}
