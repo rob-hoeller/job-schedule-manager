@@ -53,16 +53,17 @@ export async function GET(request: NextRequest) {
 
   const nameMap = new Map((profiles ?? []).map((p) => [p.id, p.display_name]));
 
-  // Group records by publish event
+  // Group records by publish event — exclude status-only changes
   const recordsByEvent = new Map<string, typeof records>();
   for (const r of records ?? []) {
+    if (r.field_name === "status") continue;
     const arr = recordsByEvent.get(r.publish_event_rid) ?? [];
     arr.push(r);
     recordsByEvent.set(r.publish_event_rid, arr);
   }
 
-  // Build enriched response
-  const enriched = events.map((e) => {
+  // Build enriched response — skip events with no schedule-move records
+  const enriched = events.filter((e) => (recordsByEvent.get(e.publish_event_rid) ?? []).length > 0).map((e) => {
     const eventRecords = recordsByEvent.get(e.publish_event_rid) ?? [];
     const directEdits = eventRecords.filter((r) => r.is_direct_edit);
     const cascaded = eventRecords.filter((r) => !r.is_direct_edit);

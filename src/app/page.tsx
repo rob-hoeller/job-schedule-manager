@@ -81,23 +81,27 @@ export default function Home() {
 
       <div className="mb-3 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <JobSelector onSelect={setJob} />
-        {job && <ViewTabs active={view} onChange={setView} />}
+        {job && (
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+            <ViewTabs active={view} onChange={setView} />
+            <button
+              onClick={() => setShowScheduleHistory(true)}
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 transition hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              title="Job History"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+              </svg>
+              <span className="hidden sm:inline">History</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {job && (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <div className="shrink-0">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex-1">
-                <JobDetails job={job} settlement={settlement} />
-              </div>
-              <button
-                onClick={() => setShowScheduleHistory(true)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-              >
-                Schedule History
-              </button>
-            </div>
+            <JobDetails job={job} settlement={settlement} />
           </div>
 
           {/* Staging toolbar */}
