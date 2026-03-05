@@ -12,6 +12,7 @@ import { NavBar } from "@/components/NavBar";
 import { EditPanel } from "@/components/EditPanel";
 import type { EditPanelMode } from "@/components/EditPanel";
 import { StagingToolbar } from "@/components/StagingToolbar";
+import { ScheduleHistoryModal } from "@/components/ScheduleHistoryModal";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useCalendarDays } from "@/hooks/useCalendarDays";
 import { useStaging } from "@/hooks/useStaging";
@@ -28,6 +29,7 @@ export default function Home() {
 
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [editMode, setEditMode] = useState<EditPanelMode | undefined>();
+  const [showScheduleHistory, setShowScheduleHistory] = useState(false);
 
   // Merge staged changes into activities for visual preview
   const effectiveActivities = useMemo(() => {
@@ -48,6 +50,11 @@ export default function Home() {
 
   const settlement = useMemo(
     () => activities.find((a) => a.description === "Settlement") ?? null,
+    [activities],
+  );
+
+  const activityNames = useMemo(
+    () => new Map(activities.map((a) => [a.jsa_rid, a.description])),
     [activities],
   );
 
@@ -80,7 +87,17 @@ export default function Home() {
       {job && (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <div className="shrink-0">
-            <JobDetails job={job} settlement={settlement} />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex-1">
+                <JobDetails job={job} settlement={settlement} />
+              </div>
+              <button
+                onClick={() => setShowScheduleHistory(true)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                Schedule History
+              </button>
+            </div>
           </div>
 
           {/* Staging toolbar */}
@@ -89,6 +106,8 @@ export default function Home() {
               <StagingToolbar
                 directCount={staging.directCount}
                 cascadedCount={staging.cascadedCount}
+                changesByActivity={staging.byActivity}
+                activityNames={activityNames}
                 onDiscardAll={staging.discardAll}
                 onPublish={staging.publish}
                 onPublished={handlePublished}
@@ -142,6 +161,14 @@ export default function Home() {
           onActivityUpdated={handleActivityUpdated}
           stagedFields={staging.byActivity.get(editingActivity.jsa_rid)}
           initialMode={editMode}
+        />
+      )}
+
+      {job && (
+        <ScheduleHistoryModal
+          scheduleRid={job.schedule_rid}
+          open={showScheduleHistory}
+          onClose={() => setShowScheduleHistory(false)}
         />
       )}
     </main>
