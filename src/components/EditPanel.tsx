@@ -1,10 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Activity } from "@/types";
+import { formatDate } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 type Tab = "move_start" | "change_duration" | "history";
+
+interface HistoryRecord {
+  change_record_rid?: number;
+  field_name: string;
+  old_value: string | null;
+  new_value: string | null;
+  is_direct_edit: boolean;
+  changed_at?: string | null;
+  publish_events?: {
+    published_at: string | null;
+    publish_note: string | null;
+  } | null;
+  user_display_name?: string | null;
+}
 
 export type EditPanelMode = "move_start" | "change_duration" | "status";
 
@@ -29,6 +44,11 @@ export function EditPanel({ activity, onClose, onStageEdit, onStatusUpdate, onAc
   const [pendingStatus, setPendingStatus] = useState<string>("");
   const [statusNote, setStatusNote] = useState("");
   const [savingStatus, setSavingStatus] = useState(false);
+
+  // History
+  const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLoadedFor, setHistoryLoadedFor] = useState<number | null>(null);
 
   async function handleStageMove() {
     setSaving(true);
@@ -69,6 +89,55 @@ export function EditPanel({ activity, onClose, onStageEdit, onStatusUpdate, onAc
     } finally {
       setSavingStatus(false);
     }
+  }
+
+  useEffect(() => {
+    if (tab !== "history") return;
+    if (historyLoadedFor === activity.jsa_rid) return;
+    let active = true;
+    setHistoryLoading(true);
+    setHistoryRecords([]);
+    fetch(`/api/history/activity?jsa_rid=${activity.jsa_rid}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!active) return;
+        setHistoryRecords(data.records ?? []);
+        setHistoryLoadedFor(activity.jsa_rid);
+      })
+      .finally(() => {
+        if (active) setHistoryLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [tab, activity.jsa_rid, historyLoadedFor]);
+
+  function fieldLabel(field: string) {
+    if (field === "start_date") return "Start date";
+    if (field === "end_date") return "End date";
+    if (field === "duration") return "Duration";
+    if (field === "status") return "Status";
+    return field;
+  }
+
+  function formatValue(field: string, value: string | null) {
+    if (!value) return "—";
+    if (field === "duration") return `${value} days`;
+    if (field.endsWith("_date")) return formatDate(value);
+    return value;
+  }
+
+  function formatTimestamp(value: string | null | undefined) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   }
 
   const hasStaged = stagedFields && stagedFields.size > 0;
@@ -118,7 +187,7 @@ export function EditPanel({ activity, onClose, onStageEdit, onStatusUpdate, onAc
 
           {/* Tabs */}
           <div className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
-            {(["move_start", "change_duration"] as const).map((t) => (
+            {(["move_start", "change_duration", "history"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -128,7 +197,7 @@ export function EditPanel({ activity, onClose, onStageEdit, onStatusUpdate, onAc
                     : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 }`}
               >
-                {t === "move_start" ? "Move Start" : "Change Duration"}
+                {t === "move_start" ? "Move Start" : t === "change_duration" ? "Change Duration" : "History"}
               </button>
             ))}
           </div>
@@ -205,6 +274,53 @@ export function EditPanel({ activity, onClose, onStageEdit, onStatusUpdate, onAc
                   {saving ? "Staging…" : "Stage Move →"}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* History Tab */}
+          {tab === "history" && (
+            <div className="space-y-3">
+              {historyLoading && <p className="text-sm text-gray-500 dark:text-gray-400">Loading history…</p>}
+              {!historyLoading && historyRecords.length === 0 && (
+                <p className="text-sm text-gray-500 dark:text-gray-400">No changes recorded</p>
+              )}
+              {!historyLoading && historyRecords.length > 0 && (
+                <div className="space-y-3">
+                  {historyRecords.map((record) => (
+                    <div key={`${record.change_record_rid ?? "record"}-${record.changed_at ?? "time"}-${record.field_name}`} className="border-b border-gray-200 pb-3 last:border-b-0 last:pb-0 dark:border-gray-800">
+                      <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                          {formatTimestamp(record.publish_events?.published_at ?? record.changed_at ?? null)}
+                        </span>
+                        <span>•</span>
+                        <span>{record.user_display_name ?? "Unknown"}</span>
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                            record.is_direct_edit
+                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                              : "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"
+                          }`}
+                        >
+                          {record.is_direct_edit ? "Direct" : "Cascaded"}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">{fieldLabel(record.field_name)}:</span>
+                        <span className="rounded bg-gray-50 px-2 py-0.5 dark:bg-gray-800">
+                          {formatValue(record.field_name, record.old_value)}
+                        </span>
+                        <span className="text-gray-400">→</span>
+                        <span className="rounded bg-gray-50 px-2 py-0.5 dark:bg-gray-800">
+                          {formatValue(record.field_name, record.new_value)}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="text-gray-400">Note: </span>{record.publish_events?.publish_note || "—"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

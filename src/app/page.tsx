@@ -12,6 +12,7 @@ import { NavBar } from "@/components/NavBar";
 import { EditPanel } from "@/components/EditPanel";
 import type { EditPanelMode } from "@/components/EditPanel";
 import { StagingToolbar } from "@/components/StagingToolbar";
+import { ScheduleHistoryModal } from "@/components/ScheduleHistoryModal";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useCalendarDays } from "@/hooks/useCalendarDays";
 import { useStaging } from "@/hooks/useStaging";
@@ -28,6 +29,7 @@ export default function Home() {
 
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [editMode, setEditMode] = useState<EditPanelMode | undefined>();
+  const [showScheduleHistory, setShowScheduleHistory] = useState(false);
 
   // Merge staged changes into activities for visual preview
   const effectiveActivities = useMemo(() => {
@@ -48,6 +50,11 @@ export default function Home() {
 
   const settlement = useMemo(
     () => activities.find((a) => a.description === "Settlement") ?? null,
+    [activities],
+  );
+
+  const activityNames = useMemo(
+    () => new Map(activities.map((a) => [a.jsa_rid, a.description])),
     [activities],
   );
 
@@ -74,7 +81,21 @@ export default function Home() {
 
       <div className="mb-3 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <JobSelector onSelect={setJob} />
-        {job && <ViewTabs active={view} onChange={setView} />}
+        {job && (
+          <div className="flex items-center gap-2">
+            <ViewTabs active={view} onChange={setView} />
+            <button
+              onClick={() => setShowScheduleHistory(true)}
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 transition hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              title="Job History"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+              </svg>
+              <span className="hidden sm:inline">History</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {job && (
@@ -89,6 +110,8 @@ export default function Home() {
               <StagingToolbar
                 directCount={staging.directCount}
                 cascadedCount={staging.cascadedCount}
+                changesByActivity={staging.byActivity}
+                activityNames={activityNames}
                 onDiscardAll={staging.discardAll}
                 onPublish={staging.publish}
                 onPublished={handlePublished}
@@ -142,6 +165,14 @@ export default function Home() {
           onActivityUpdated={handleActivityUpdated}
           stagedFields={staging.byActivity.get(editingActivity.jsa_rid)}
           initialMode={editMode}
+        />
+      )}
+
+      {job && (
+        <ScheduleHistoryModal
+          scheduleRid={job.schedule_rid}
+          open={showScheduleHistory}
+          onClose={() => setShowScheduleHistory(false)}
         />
       )}
     </main>
