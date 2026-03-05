@@ -34,6 +34,27 @@ export function StagingToolbar({
 
   const total = directCount + cascadedCount;
 
+  // Check if Settlement date is affected
+  const settlementImpact = (() => {
+    for (const [jsaRid, fields] of changesByActivity) {
+      const name = activityNames.get(jsaRid);
+      if (name !== "Settlement") continue;
+      const endChange = fields.get("end_date");
+      if (!endChange || !endChange.original_value || !endChange.staged_value) continue;
+      const orig = new Date(endChange.original_value + "T12:00:00");
+      const staged = new Date(endChange.staged_value + "T12:00:00");
+      const diffMs = staged.getTime() - orig.getTime();
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return null;
+      return {
+        originalDate: endChange.original_value,
+        stagedDate: endChange.staged_value,
+        diffDays,
+      };
+    }
+    return null;
+  })();
+
   function fieldLabel(field: string) {
     if (field === "start_date") return "Start date";
     if (field === "end_date") return "End date";
@@ -80,12 +101,20 @@ export function StagingToolbar({
   return (
     <>
       <div className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 dark:border-amber-800 dark:bg-amber-950/30">
-        <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300">
-          <span className="text-base">⚡</span>
-          <span className="font-medium">{total} staged changes</span>
-          <span className="text-amber-600 dark:text-amber-400">
-            ({directCount} direct, {cascadedCount} cascaded)
-          </span>
+        <div className="text-sm text-amber-800 dark:text-amber-300">
+          <div className="flex items-center gap-2">
+            <span className="text-base">⚡</span>
+            <span className="font-medium">{total} staged changes</span>
+            <span className="text-amber-600 dark:text-amber-400">
+              ({directCount} direct, {cascadedCount} cascaded)
+            </span>
+          </div>
+          {settlementImpact && (
+            <div className={`ml-6 mt-0.5 text-xs font-medium ${settlementImpact.diffDays > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
+              Settlement {settlementImpact.diffDays > 0 ? "pushed" : "pulled"} {Math.abs(settlementImpact.diffDays)} day{Math.abs(settlementImpact.diffDays) !== 1 ? "s" : ""}{" "}
+              ({formatDate(settlementImpact.originalDate)} → {formatDate(settlementImpact.stagedDate)})
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
