@@ -109,6 +109,26 @@ export class WorkdayCalendar {
   }
 
   /**
+   * Count workdays between two dates (exclusive of fromDate, inclusive of toDate).
+   * Returns the number of workday steps from fromDate to toDate.
+   * Positive if toDate is after fromDate, negative if before, 0 if same.
+   */
+  workdaysBetween(fromDate: string, toDate: string): number {
+    if (fromDate === toDate) return 0;
+    const forward = toDate > fromDate;
+    const direction = forward ? 1 : -1;
+    let count = 0;
+    let current = fromDate;
+    while (current !== toDate) {
+      current = this.adjacentDay(current, direction as 1 | -1);
+      if (this.workdays.has(current)) count += direction;
+      // Safety: bail after 500 iterations
+      if (Math.abs(count) > 500) break;
+    }
+    return count;
+  }
+
+  /**
    * If date is not a workday, advance to the next workday.
    */
   nextWorkday(date: string): string {
@@ -250,7 +270,19 @@ export function calculateCascade(
     }
   }
 
-  // Process cascaded activities — recalculate from predecessors
+  // Snapshot the ORIGINAL state before any edits (for gap calculation)
+  const originalState = new Map<number, { start: string; end: string; duration: number }>();
+  for (const a of activities) {
+    if (a.current_start_date && a.current_end_date && a.current_duration) {
+      originalState.set(a.jsa_rid, {
+        start: a.current_start_date,
+        end: a.current_end_date,
+        duration: a.current_duration,
+      });
+    }
+  }
+
+  // Process cascaded activities — preserve current workday gaps
   for (const jsaRid of toProcess) {
     if (directEdits.has(jsaRid)) continue; // skip direct edits
 
@@ -259,36 +291,35 @@ export function calculateCascade(
     const act = actMap.get(jsaRid)!;
     const preds = predMap.get(jsaRid) ?? [];
 
-    // Find the most constraining predecessor
+    // Find the most constraining predecessor using actual current gaps
     let latestStart: string | null = null;
     let sourceJsa: number | null = null;
 
     for (const dep of preds) {
       const predState = state.get(dep.predecessor_jsa_rid);
       if (!predState) continue;
+      const predOriginal = originalState.get(dep.predecessor_jsa_rid);
+      if (!predOriginal) continue;
 
-      let baseDate: string;
+      // Measure the ACTUAL workday gap on the current live schedule
+      // (the distance between the predecessor's anchor and the successor's start)
+      let originalAnchor: string;
       if (dep.dependency_type === "FS") {
-        baseDate = predState.end;
+        originalAnchor = predOriginal.end;
       } else {
-        // SS
-        baseDate = predState.start;
+        originalAnchor = predOriginal.start;
+      }
+      const actualGap = calendar.workdaysBetween(originalAnchor, current.start);
+
+      // Apply the same gap to the predecessor's NEW anchor
+      let newAnchor: string;
+      if (dep.dependency_type === "FS") {
+        newAnchor = predState.end;
+      } else {
+        newAnchor = predState.start;
       }
 
-      // Add lag days (workdays)
-      let calcStart: string;
-      if (dep.dependency_type === "FS") {
-        // FS: successor starts lag workdays after predecessor ends
-        calcStart = dep.lag_days === 0
-          ? calendar.addWorkdays(baseDate, 1)
-          : calendar.addWorkdays(baseDate, dep.lag_days);
-      } else {
-        // SS: successor starts lag workdays after predecessor starts
-        calcStart = dep.lag_days === 0
-          ? baseDate
-          : calendar.addWorkdays(baseDate, dep.lag_days);
-      }
-
+      let calcStart = calendar.addWorkdays(newAnchor, actualGap);
       calcStart = calendar.nextWorkday(calcStart);
 
       if (latestStart === null || calcStart > latestStart) {
