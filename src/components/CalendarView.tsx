@@ -31,12 +31,21 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-/** Calculate which day number this date is within an activity span (1-based) */
-function activityDayNum(activity: Activity, dateKey: string): number {
+/** Calculate which workday number this date is within an activity span (1-based, skips non-workdays) */
+function activityDayNum(activity: Activity, dateKey: string, calendarDays: Map<string, CalendarDay>): number {
   if (!activity.current_start_date) return 1;
   const start = parseLocalDate(activity.current_start_date);
   const current = parseLocalDate(dateKey);
-  return Math.round((current.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  let count = 0;
+  const cursor = new Date(start);
+  while (cursor <= current) {
+    const k = toKey(cursor);
+    const cd = calendarDays.get(k);
+    const isWorkday = cd ? cd.is_workday === 1 : (cursor.getDay() !== 0 && cursor.getDay() !== 6);
+    if (isWorkday) count++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return Math.max(count, 1);
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -59,11 +68,13 @@ interface Props {
 function OverflowPopup({
   date,
   activities: acts,
+  calendarDays,
   onSelect,
   onClose,
 }: {
   date: Date;
   activities: Activity[];
+  calendarDays: Map<string, CalendarDay>;
   onSelect: (a: Activity) => void;
   onClose: () => void;
 }) {
@@ -81,7 +92,7 @@ function OverflowPopup({
         </div>
         <div className="space-y-1">
           {acts.map((a) => {
-            const dayNum = activityDayNum(a, dateKey);
+            const dayNum = activityDayNum(a, dateKey, calendarDays);
             const dayTag = dayNum > 1 ? ` - Day ${dayNum}` : "";
             return (
               <button
@@ -181,7 +192,7 @@ function MobileView({
             ) : (
               <div className="space-y-1">
                 {acts.map((a) => {
-                  const dayNum = activityDayNum(a, key);
+                  const dayNum = activityDayNum(a, key, calendarDays);
                   const dayTag = dayNum > 1 ? ` - Day ${dayNum}` : "";
                   return (
                     <button
@@ -255,14 +266,18 @@ export function CalendarView({ activities, dependencies, calendarDays, onActivit
       const cursor = new Date(start);
       while (cursor <= end) {
         const key = toKey(cursor);
-        const arr = m.get(key) ?? [];
-        arr.push(a);
-        m.set(key, arr);
+        const cd = calendarDays.get(key);
+        const isWorkday = cd ? cd.is_workday === 1 : (cursor.getDay() !== 0 && cursor.getDay() !== 6);
+        if (isWorkday) {
+          const arr = m.get(key) ?? [];
+          arr.push(a);
+          m.set(key, arr);
+        }
         cursor.setDate(cursor.getDate() + 1);
       }
     }
     return m;
-  }, [activities]);
+  }, [activities, calendarDays]);
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear(year - 1); }
@@ -350,7 +365,7 @@ export function CalendarView({ activities, dependencies, calendarDays, onActivit
 
                   <div className="mt-0.5 space-y-0.5">
                     {acts.slice(0, VISIBLE_BARS).map((a) => {
-                      const dayNum = activityDayNum(a, key);
+                      const dayNum = activityDayNum(a, key, calendarDays);
                       const dayTag = dayNum > 1 ? ` - Day ${dayNum}` : "";
                       const staged = stagedChanges?.has(a.jsa_rid);
                       const cascaded = staged && ![...(stagedChanges!.get(a.jsa_rid)!.values())].some((c) => c.is_direct_edit);
@@ -391,6 +406,7 @@ export function CalendarView({ activities, dependencies, calendarDays, onActivit
         <OverflowPopup
           date={overflowDay}
           activities={dateActivities.get(toKey(overflowDay)) ?? []}
+          calendarDays={calendarDays}
           onSelect={setSelected}
           onClose={() => setOverflowDay(null)}
         />
