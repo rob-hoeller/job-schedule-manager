@@ -43,6 +43,7 @@ interface Props {
   selectedJsaRid: number | null;
   onStageEdit: (jsaRid: number, moveType: "move_start" | "change_duration", value: string | number) => Promise<void>;
   onStatusUpdate: (jsaRid: number, status: string, note: string) => Promise<void>;
+  onRefresh: () => void;
 }
 
 const EXAMPLES = [
@@ -53,7 +54,7 @@ const EXAMPLES = [
   "What activities are late?",
 ];
 
-export function ChatPanel({ open, onClose, scheduleRid, selectedJsaRid, onStageEdit, onStatusUpdate }: Props) {
+export function ChatPanel({ open, onClose, scheduleRid, selectedJsaRid, onStageEdit, onStatusUpdate, onRefresh }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -118,24 +119,35 @@ export function ChatPanel({ open, onClose, scheduleRid, selectedJsaRid, onStageE
   }
 
   async function handleStage(msgId: number, actions: Action[]) {
+    const moveActions = actions.filter((a) => a.action_type !== "set_status");
+    const statusActions = actions.filter((a) => a.action_type === "set_status");
+
     setStagingAction({ msgId, actionIdx: 0 });
     try {
-      for (let i = 0; i < actions.length; i++) {
+      // Stage move actions
+      for (let i = 0; i < moveActions.length; i++) {
         setStagingAction({ msgId, actionIdx: i });
-        const action = actions[i];
-        if (action.action_type === "set_status") {
-          await onStatusUpdate(action.jsa_rid, action.value as string, `AI chat: ${action.explanation}`);
-        } else {
-          await onStageEdit(action.jsa_rid, action.action_type, action.value);
-        }
+        const action = moveActions[i];
+        await onStageEdit(action.jsa_rid, action.action_type as "move_start" | "change_duration", action.value);
       }
-      // Mark message as staged
+
+      // Apply status changes immediately
+      for (let i = 0; i < statusActions.length; i++) {
+        setStagingAction({ msgId, actionIdx: moveActions.length + i });
+        const action = statusActions[i];
+        await onStatusUpdate(action.jsa_rid, action.value as string, `AI chat: ${action.explanation}`);
+      }
+
+      // Refresh schedule if status changed to reflect it immediately
+      if (statusActions.length > 0) onRefresh();
+
+      // Mark message as done
       setMessages((prev) =>
         prev.map((m) => (m.id === msgId ? { ...m, content: m.content + " ✅" } : m)),
       );
     } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : "Failed to stage";
-      setMessages((prev) => [...prev, { id: nextId.current++, role: "assistant", content: `Error staging: ${errMsg}`, response: { type: "error", message: errMsg } }]);
+      const errMsg = err instanceof Error ? err.message : "Failed";
+      setMessages((prev) => [...prev, { id: nextId.current++, role: "assistant", content: `Error: ${errMsg}`, response: { type: "error", message: errMsg } }]);
     } finally {
       setStagingAction(null);
     }
@@ -329,20 +341,29 @@ function MessageBubble({
                 </div>
               ))}
             </div>
-            {!msg.content.endsWith("✅") && (
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={() => onStage(msg.id, r.actions!)}
-                  disabled={!!stagingAction}
-                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {stagingAction?.msgId === msg.id ? `Staging ${stagingAction.actionIdx + 1}/${r.actions!.length}…` : "Stage Changes"}
-                </button>
-              </div>
-            )}
-            {msg.content.endsWith("✅") && (
-              <p className="text-xs font-medium text-green-600 dark:text-green-400">✅ Changes staged — review in the staging toolbar</p>
-            )}
+            {!msg.content.endsWith("✅") && (() => {
+              const hasMoves = r.actions!.some((a) => a.action_type !== "set_status");
+              const hasStatus = r.actions!.some((a) => a.action_type === "set_status");
+              const label = hasMoves && hasStatus ? "Apply All" : hasMoves ? "Stage Changes" : "Apply";
+              return (
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => onStage(msg.id, r.actions!)}
+                    disabled={!!stagingAction}
+                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {stagingAction?.msgId === msg.id ? `Applying ${stagingAction.actionIdx + 1}/${r.actions!.length}…` : label}
+                  </button>
+                </div>
+              );
+            })()}
+            {msg.content.endsWith("✅") && (() => {
+              const hasMoves = r.actions!.some((a) => a.action_type !== "set_status");
+              const hasStatus = r.actions!.some((a) => a.action_type === "set_status");
+              if (hasMoves && hasStatus) return <p className="text-xs font-medium text-green-600 dark:text-green-400">✅ Status updated, schedule changes staged</p>;
+              if (hasStatus) return <p className="text-xs font-medium text-green-600 dark:text-green-400">✅ Status updated</p>;
+              return <p className="text-xs font-medium text-green-600 dark:text-green-400">✅ Changes staged — review in the staging toolbar</p>;
+            })()}
           </>
         )}
 

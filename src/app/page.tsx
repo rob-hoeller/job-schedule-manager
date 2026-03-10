@@ -196,6 +196,7 @@ export default function Home() {
           selectedJsaRid={editingActivity?.jsa_rid ?? null}
           onStageEdit={staging.stageEdit}
           onStatusUpdate={staging.updateStatus}
+          onRefresh={refreshSchedule}
         />
       )}
     </main>

@@ -16,7 +16,7 @@ export async function loadScheduleData(scheduleRid: number) {
   const [actResult, depResult, calResult] = await Promise.all([
     sb
       .from("job_schedule_activities")
-      .select("jsa_rid, schedule_rid, current_start_date, current_end_date, current_duration")
+      .select("jsa_rid, schedule_rid, current_start_date, current_end_date, current_duration, status")
       .eq("schedule_rid", scheduleRid),
     sb
       .from("job_schedule_activity_dependencies")
