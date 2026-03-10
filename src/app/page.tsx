@@ -13,6 +13,7 @@ import { EditPanel } from "@/components/EditPanel";
 import type { EditPanelMode } from "@/components/EditPanel";
 import { StagingToolbar } from "@/components/StagingToolbar";
 import { ScheduleHistoryModal } from "@/components/ScheduleHistoryModal";
+import { ChatPanel } from "@/components/ChatPanel";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useCalendarDays } from "@/hooks/useCalendarDays";
 import { useStaging } from "@/hooks/useStaging";
@@ -30,6 +31,7 @@ export default function Home() {
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [editMode, setEditMode] = useState<EditPanelMode | undefined>();
   const [showScheduleHistory, setShowScheduleHistory] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   // Merge staged changes into activities for visual preview
   const effectiveActivities = useMemo(() => {
@@ -93,6 +95,16 @@ export default function Home() {
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
               </svg>
               <span className="hidden sm:inline">History</span>
+            </button>
+            <button
+              onClick={() => setShowChat(true)}
+              className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-700"
+              title="AI Schedule Assistant"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                <path fillRule="evenodd" d="M10 2c-2.236 0-4.43.18-6.57.524C1.993 2.755 1 4.014 1 5.426v5.148c0 1.413.993 2.67 2.43 2.902 1.168.188 2.352.327 3.55.414.28.02.521.18.642.413l1.713 3.293a.75.75 0 001.33 0l1.713-3.293c.121-.233.362-.393.642-.413a41.102 41.102 0 003.55-.414c1.437-.231 2.43-1.49 2.43-2.902V5.426c0-1.413-.993-2.67-2.43-2.902A41.289 41.289 0 0010 2zM6.75 6a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5zm0 2.5a.75.75 0 000 1.5h3.5a.75.75 0 000-1.5h-3.5z" clipRule="evenodd" />
+              </svg>
+              <span className="hidden sm:inline">AI</span>
             </button>
           </div>
         )}
@@ -173,6 +185,17 @@ export default function Home() {
           scheduleRid={job.schedule_rid}
           open={showScheduleHistory}
           onClose={() => setShowScheduleHistory(false)}
+        />
+      )}
+
+      {job && (
+        <ChatPanel
+          open={showChat}
+          onClose={() => setShowChat(false)}
+          scheduleRid={job.schedule_rid}
+          selectedJsaRid={editingActivity?.jsa_rid ?? null}
+          onStageEdit={staging.stageEdit}
+          onStatusUpdate={staging.updateStatus}
         />
       )}
     </main>
