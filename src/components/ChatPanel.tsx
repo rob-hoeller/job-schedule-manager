@@ -62,20 +62,8 @@ export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid
   const [stagingAction, setStagingAction] = useState<{ msgId: number; actionIdx: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputWrapRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
-
-  // Track iOS keyboard via visualViewport
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.visualViewport) return;
-    const vv = window.visualViewport;
-    function onResize() {
-      const offset = window.innerHeight - (vv?.height ?? window.innerHeight);
-      setKeyboardOffset(offset > 0 ? offset : 0);
-    }
-    vv.addEventListener("resize", onResize);
-    return () => vv.removeEventListener("resize", onResize);
-  }, []);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -183,11 +171,8 @@ export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid
 
   return (
     <>
-      {/* Mobile: full-screen overlay — adjusts for iOS keyboard */}
-      <div
-        className="fixed inset-x-0 top-0 z-40 flex flex-col bg-white dark:bg-gray-950 sm:hidden"
-        style={{ height: keyboardOffset > 0 ? `calc(100dvh - ${keyboardOffset}px)` : "100dvh" }}
-      >
+      {/* Mobile: full-screen overlay */}
+      <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-gray-950 sm:hidden">
         <MobileHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} jobLabel={jobLabel} />
         <ChatBody
           messages={messages}
@@ -198,7 +183,7 @@ export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid
           onExample={send}
           onOptionClick={send}
         />
-        <ChatInput input={input} setInput={setInput} onKeyDown={handleKeyDown} onSend={() => send()} sending={sending} inputRef={inputRef} />
+        <ChatInput input={input} setInput={setInput} onKeyDown={handleKeyDown} onSend={() => send()} sending={sending} inputRef={inputRef} wrapRef={inputWrapRef} />
       </div>
 
       {/* Desktop: slide-out panel */}
@@ -433,7 +418,7 @@ function MessageBubble({
 }
 
 function ChatInput({
-  input, setInput, onKeyDown, onSend, sending, inputRef,
+  input, setInput, onKeyDown, onSend, sending, inputRef, wrapRef,
 }: {
   input: string;
   setInput: (v: string) => void;
@@ -441,9 +426,18 @@ function ChatInput({
   onSend: () => void;
   sending: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  wrapRef?: React.RefObject<HTMLDivElement | null>;
 }) {
+  function handleFocus() {
+    // Delay to let iOS keyboard animate open, then scroll input into view
+    setTimeout(() => {
+      wrapRef?.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      inputRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 300);
+  }
+
   return (
-    <div className="shrink-0 border-t border-gray-200 p-3 dark:border-gray-800" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+    <div ref={wrapRef} className="shrink-0 border-t border-gray-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-gray-800">
       <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-900">
         <input
           ref={inputRef}
@@ -451,6 +445,7 @@ function ChatInput({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
+          onFocus={handleFocus}
           placeholder="Describe a change or ask a question…"
           disabled={sending}
           className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none dark:text-gray-200 dark:placeholder-gray-500"
