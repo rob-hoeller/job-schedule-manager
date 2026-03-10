@@ -259,6 +259,36 @@ export function CalendarView({ activities, dependencies, calendarDays, onActivit
   /* Map date → activities active on that date */
   const dateActivities = useMemo(() => {
     const m = new Map<string, Activity[]>();
+
+    // Add ghost entries for staged activities at their ORIGINAL positions
+    if (stagedChanges) {
+      for (const [jsaRid, fields] of stagedChanges) {
+        const origStart = fields.get("start_date")?.original_value;
+        const origEnd = fields.get("end_date")?.original_value;
+        if (!origStart || !origEnd) continue;
+        const act = activities.find((a) => a.jsa_rid === jsaRid);
+        if (!act) continue;
+        // Create a ghost activity with original dates and a marker
+        const ghost = { ...act, _ghost: true } as Activity & { _ghost?: boolean };
+        ghost.current_start_date = origStart;
+        ghost.current_end_date = origEnd;
+        const start = parseLocalDate(origStart);
+        const end = parseLocalDate(origEnd);
+        const cursor = new Date(start);
+        while (cursor <= end) {
+          const key = toKey(cursor);
+          const cd = calendarDays.get(key);
+          const isWorkday = cd ? cd.is_workday === 1 : (cursor.getDay() !== 0 && cursor.getDay() !== 6);
+          if (isWorkday) {
+            const arr = m.get(key) ?? [];
+            arr.push(ghost);
+            m.set(key, arr);
+          }
+          cursor.setDate(cursor.getDate() + 1);
+        }
+      }
+    }
+
     for (const a of activities) {
       if (!a.current_start_date) continue;
       const start = parseLocalDate(a.current_start_date);
@@ -277,7 +307,7 @@ export function CalendarView({ activities, dependencies, calendarDays, onActivit
       }
     }
     return m;
-  }, [activities, calendarDays]);
+  }, [activities, calendarDays, stagedChanges]);
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear(year - 1); }
@@ -364,10 +394,11 @@ export function CalendarView({ activities, dependencies, calendarDays, onActivit
                   </div>
 
                   <div className="mt-0.5 space-y-0.5">
-                    {acts.slice(0, VISIBLE_BARS).map((a) => {
+                    {acts.slice(0, VISIBLE_BARS).map((a, idx) => {
+                      const isGhost = (a as Activity & { _ghost?: boolean })._ghost === true;
                       const dayNum = activityDayNum(a, key, calendarDays);
                       const dayTag = dayNum > 1 ? ` - Day ${dayNum}` : "";
-                      const staged = stagedChanges?.has(a.jsa_rid);
+                      const staged = !isGhost && stagedChanges?.has(a.jsa_rid);
                       const cascaded = staged && ![...(stagedChanges!.get(a.jsa_rid)!.values())].some((c) => c.is_direct_edit);
                       const stagingClass = staged
                         ? cascaded
@@ -376,12 +407,12 @@ export function CalendarView({ activities, dependencies, calendarDays, onActivit
                         : "";
                       return (
                         <button
-                          key={a.job_schedule_activity_id}
-                          onClick={() => onActivityClick ? onActivityClick(a) : setSelected(a)}
-                          className={`block w-full truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight text-white transition hover:opacity-80 ${barColor(a.status)} ${stagingClass}`}
-                          title={`${a.description}${dayTag}`}
+                          key={isGhost ? `ghost-${a.jsa_rid}-${idx}` : a.job_schedule_activity_id}
+                          onClick={() => !isGhost && (onActivityClick ? onActivityClick(a) : setSelected(a))}
+                          className={`block w-full truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight text-white transition ${barColor(a.status)} ${stagingClass} ${isGhost ? "opacity-25 cursor-default" : "hover:opacity-80"}`}
+                          title={isGhost ? `${a.description} (original position)` : `${a.description}${dayTag}`}
                         >
-                          {a.description}{dayTag}
+                          {a.description}{isGhost ? "" : dayTag}
                         </button>
                       );
                     })}

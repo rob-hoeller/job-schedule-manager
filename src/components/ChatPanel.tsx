@@ -40,6 +40,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   scheduleRid: number;
+  jobLabel: string;
   selectedJsaRid: number | null;
   onStageEdit: (jsaRid: number, moveType: "move_start" | "change_duration", value: string | number) => Promise<void>;
   onStatusUpdate: (jsaRid: number, status: string, note: string) => Promise<void>;
@@ -54,7 +55,7 @@ const EXAMPLES = [
   "What activities are late?",
 ];
 
-export function ChatPanel({ open, onClose, scheduleRid, selectedJsaRid, onStageEdit, onStatusUpdate, onRefresh }: Props) {
+export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid, onStageEdit, onStatusUpdate, onRefresh }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -171,7 +172,7 @@ export function ChatPanel({ open, onClose, scheduleRid, selectedJsaRid, onStageE
     <>
       {/* Mobile: full-screen overlay */}
       <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-gray-950 sm:hidden">
-        <MobileHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} />
+        <MobileHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} jobLabel={jobLabel} />
         <ChatBody
           messages={messages}
           sending={sending}
@@ -186,7 +187,7 @@ export function ChatPanel({ open, onClose, scheduleRid, selectedJsaRid, onStageE
 
       {/* Desktop: slide-out panel */}
       <div className="fixed inset-y-0 right-0 z-40 hidden w-96 flex-col border-l border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-950 sm:flex">
-        <DesktopHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} />
+        <DesktopHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} jobLabel={jobLabel} />
         <ChatBody
           messages={messages}
           sending={sending}
@@ -204,14 +205,17 @@ export function ChatPanel({ open, onClose, scheduleRid, selectedJsaRid, onStageE
 
 /* ── Sub-components ── */
 
-function MobileHeader({ onClose, onClear, messageCount }: { onClose: () => void; onClear: () => void; messageCount: number }) {
+function MobileHeader({ onClose, onClear, messageCount, jobLabel }: { onClose: () => void; onClear: () => void; messageCount: number; jobLabel: string }) {
   return (
     <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800">
       <div className="flex items-center gap-2">
         <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
           ← Back
         </button>
-        <h2 className="text-sm font-semibold">Schedule Assistant</h2>
+        <div>
+          <h2 className="text-sm font-semibold">Schedule Assistant</h2>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500">{jobLabel}</p>
+        </div>
       </div>
       {messageCount > 0 && (
         <button onClick={onClear} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">Clear</button>
@@ -220,10 +224,13 @@ function MobileHeader({ onClose, onClear, messageCount }: { onClose: () => void;
   );
 }
 
-function DesktopHeader({ onClose, onClear, messageCount }: { onClose: () => void; onClear: () => void; messageCount: number }) {
+function DesktopHeader({ onClose, onClear, messageCount, jobLabel }: { onClose: () => void; onClear: () => void; messageCount: number; jobLabel: string }) {
   return (
     <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800">
-      <h2 className="text-sm font-semibold">💬 Schedule Assistant</h2>
+      <div>
+        <h2 className="text-sm font-semibold">✨ Schedule Assistant</h2>
+        <p className="text-[11px] text-gray-400 dark:text-gray-500">{jobLabel}</p>
+      </div>
       <div className="flex items-center gap-2">
         {messageCount > 0 && (
           <button onClick={onClear} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">Clear</button>

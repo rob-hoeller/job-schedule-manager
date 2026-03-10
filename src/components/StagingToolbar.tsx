@@ -100,37 +100,38 @@ export function StagingToolbar({
 
   return (
     <>
-      <div className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 dark:border-amber-800 dark:bg-amber-950/30">
-        <div className="text-sm text-amber-800 dark:text-amber-300">
-          <div className="flex items-center gap-2">
-            <span className="text-base">⚡</span>
-            <span className="font-medium">{total} staged changes</span>
-            <span className="text-amber-600 dark:text-amber-400">
-              ({directCount} direct, {cascadedCount} cascaded)
-            </span>
-          </div>
-          {settlementImpact && (
-            <div className={`ml-6 mt-0.5 text-xs font-medium ${settlementImpact.diffDays > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
-              Settlement {settlementImpact.diffDays > 0 ? "pushed" : "pulled"} {Math.abs(settlementImpact.diffDays)} day{Math.abs(settlementImpact.diffDays) !== 1 ? "s" : ""}{" "}
-              ({formatDate(settlementImpact.originalDate)} → {formatDate(settlementImpact.stagedDate)})
+      <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 dark:border-amber-800 dark:bg-amber-950/30">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-amber-800 dark:text-amber-300">
+            <div className="flex items-center gap-2">
+              <span className="text-base">⚡</span>
+              <span className="font-medium">{total} staged</span>
+              <span className="hidden text-amber-600 dark:text-amber-400 sm:inline">
+                ({directCount} direct, {cascadedCount} cascaded)
+              </span>
             </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleDiscard}
-            disabled={loading || discarding}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-white disabled:opacity-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
-          >
-            {discarding ? "Discarding…" : "Discard All"}
-          </button>
-          <button
-            onClick={() => setShowPublishModal(true)}
-            disabled={loading}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
-          >
-            Review & Publish →
-          </button>
+            {settlementImpact && (
+              <div className={`ml-6 mt-0.5 text-xs font-medium ${settlementImpact.diffDays > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
+                Settlement {settlementImpact.diffDays > 0 ? "+" : ""}{settlementImpact.diffDays}d ({formatDate(settlementImpact.originalDate)} → {formatDate(settlementImpact.stagedDate)})
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDiscard}
+              disabled={loading || discarding}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-white disabled:opacity-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
+            >
+              {discarding ? "Discarding…" : "Discard"}
+            </button>
+            <button
+              onClick={() => setShowPublishModal(true)}
+              disabled={loading}
+              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
+            >
+              Review & Publish →
+            </button>
+          </div>
         </div>
       </div>
 
