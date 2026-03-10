@@ -48,7 +48,7 @@ interface Props {
 }
 
 const EXAMPLES = [
-  "Push drywall back 3 days",
+  "Push drywall forward 3 days",
   "Extend framing by a week",
   "When does settlement happen?",
   "Mark install windows as complete",
@@ -171,7 +171,7 @@ export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid
 
   return (
     <>
-      {/* Mobile: uses height 100% of body, not fixed, so iOS keyboard adjusts naturally */}
+      {/* Mobile: uses height 100% of body, not fixed, so mobile keyboard adjusts naturally */}
       <div className="fixed inset-0 z-40 sm:hidden" role="dialog" aria-modal="true">
         <div className="flex h-full flex-col bg-white dark:bg-gray-950">
           <MobileHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} jobLabel={jobLabel} />
@@ -219,7 +219,7 @@ function MobileHeader({ onClose, onClear, messageCount, jobLabel }: { onClose: (
     <div className="flex items-center justify-between bg-blue-600 px-4 py-3 text-white">
       <div className="flex items-center gap-2">
         <button onClick={onClose} className="text-blue-100 hover:text-white">
-          ← Back
+          ←
         </button>
         <div>
           <h2 className="text-sm font-semibold">✨ Schedule Assistant</h2>
@@ -437,7 +437,7 @@ function ChatInput({
   wrapRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   function handleFocus() {
-    // Delay to let iOS keyboard animate open, then scroll input into view
+    // Delay to let mobile keyboard animate open, then scroll input into view
     setTimeout(() => {
       wrapRef?.current?.scrollIntoView({ behavior: "smooth", block: "end" });
       inputRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
