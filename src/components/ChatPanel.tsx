@@ -42,6 +42,7 @@ interface Props {
   scheduleRid: number;
   jobLabel: string;
   selectedJsaRid: number | null;
+  selectedActivityName?: string | null;
   onStageEdit: (jsaRid: number, moveType: "move_start" | "change_duration", value: string | number) => Promise<void>;
   onStatusUpdate: (jsaRid: number, status: string, note: string) => Promise<void>;
   onRefresh: () => void;
@@ -55,7 +56,7 @@ const EXAMPLES = [
   "What activities are late?",
 ];
 
-export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid, onStageEdit, onStatusUpdate, onRefresh }: Props) {
+export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid, selectedActivityName, onStageEdit, onStatusUpdate, onRefresh }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -75,14 +76,29 @@ export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid
     if (open) setTimeout(() => inputRef.current?.focus(), 100);
   }, [open]);
 
-  // Build conversation history for context
+  // Build conversation history for context — summarize assistant responses for readability
   const getHistory = useCallback(() => {
     return messages
       .filter((m) => !m.loading)
-      .map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.role === "user" ? m.content : (m.response ? JSON.stringify(m.response) : m.content),
-      }));
+      .map((m) => {
+        if (m.role === "user") return { role: "user" as const, content: m.content };
+        const r = m.response;
+        if (!r) return { role: "assistant" as const, content: m.content };
+        let summary = "";
+        if (r.type === "action" && r.actions) {
+          summary = (r.interpretation ?? "") + " Actions: " + r.actions.map((a) =>
+            `${a.activity_description}: ${a.action_type}=${a.value}`
+          ).join("; ");
+          if (m.content.endsWith("✅")) summary += " [Applied]";
+        } else if (r.type === "answer") {
+          summary = r.answer ?? "";
+        } else if (r.type === "clarification") {
+          summary = r.message ?? "";
+        } else if (r.type === "error") {
+          summary = "Error: " + (r.message ?? "");
+        }
+        return { role: "assistant" as const, content: summary };
+      });
   }, [messages]);
 
   async function send(text?: string) {
@@ -188,7 +204,7 @@ export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid
               />
             </div>
             <div className="sticky bottom-0 bg-white dark:bg-gray-950">
-              <ChatInput input={input} setInput={setInput} onKeyDown={handleKeyDown} onSend={() => send()} sending={sending} inputRef={inputRef} wrapRef={inputWrapRef} />
+              <ChatInput input={input} setInput={setInput} onKeyDown={handleKeyDown} onSend={() => send()} sending={sending} inputRef={inputRef} wrapRef={inputWrapRef} selectedActivityName={selectedActivityName} />
             </div>
           </div>
         </div>
@@ -206,7 +222,7 @@ export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid
           onExample={send}
           onOptionClick={send}
         />
-        <ChatInput input={input} setInput={setInput} onKeyDown={handleKeyDown} onSend={() => send()} sending={sending} inputRef={inputRef} />
+        <ChatInput input={input} setInput={setInput} onKeyDown={handleKeyDown} onSend={() => send()} sending={sending} inputRef={inputRef} selectedActivityName={selectedActivityName} />
       </div>
     </>
   );
@@ -426,7 +442,7 @@ function MessageBubble({
 }
 
 function ChatInput({
-  input, setInput, onKeyDown, onSend, sending, inputRef, wrapRef,
+  input, setInput, onKeyDown, onSend, sending, inputRef, wrapRef, selectedActivityName,
 }: {
   input: string;
   setInput: (v: string) => void;
@@ -435,9 +451,9 @@ function ChatInput({
   sending: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
   wrapRef?: React.RefObject<HTMLDivElement | null>;
+  selectedActivityName?: string | null;
 }) {
   function handleFocus() {
-    // Delay to let iOS keyboard animate open, then scroll input into view
     setTimeout(() => {
       wrapRef?.current?.scrollIntoView({ behavior: "smooth", block: "end" });
       inputRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -445,8 +461,14 @@ function ChatInput({
   }
 
   return (
-    <div ref={wrapRef} className="shrink-0 border-t border-gray-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-gray-800">
-      <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-900">
+    <div ref={wrapRef} className="shrink-0 border-t border-gray-200 dark:border-gray-800">
+      {selectedActivityName && (
+        <div className="flex items-center gap-1.5 px-3 pt-2 text-[11px] text-gray-500 dark:text-gray-400">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-500" />
+          Focused: <span className="font-medium text-gray-700 dark:text-gray-300">{selectedActivityName}</span>
+        </div>
+      )}
+      <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 mx-3 my-2 mb-[max(0.5rem,env(safe-area-inset-bottom))] px-3 py-2 dark:border-gray-800 dark:bg-gray-900">
         <input
           ref={inputRef}
           type="text"

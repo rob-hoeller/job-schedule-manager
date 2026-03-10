@@ -198,6 +198,7 @@ export default function Home() {
         scheduleRid={job.schedule_rid}
         jobLabel={`${job.community_name} Lot ${job.lot_number}`}
         selectedJsaRid={editingActivity?.jsa_rid ?? null}
+        selectedActivityName={editingActivity?.description ?? null}
         onStageEdit={staging.stageEdit}
         onStatusUpdate={staging.updateStatus}
         onRefresh={refreshSchedule}

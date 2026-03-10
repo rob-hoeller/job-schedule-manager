@@ -19,9 +19,10 @@ function buildSystemPrompt(
     .map((a) => `  - jsa_rid=${a.jsa_rid} | "${a.description}" | start=${a.current_start_date} | end=${a.current_end_date} | duration=${a.current_duration}d | status=${a.status}`)
     .join("\n");
 
-  const selectedCtx = selectedJsaRid
-    ? `\nThe user currently has activity jsa_rid=${selectedJsaRid} selected/open. If they say "it" or "this activity", they mean that one.`
-    : "";
+  const selectedActivity = selectedJsaRid ? activities.find((a) => a.jsa_rid === selectedJsaRid) : null;
+  const selectedCtx = selectedActivity
+    ? `\nSELECTED ACTIVITY: jsa_rid=${selectedActivity.jsa_rid} | "${selectedActivity.description}" | start=${selectedActivity.current_start_date} | end=${selectedActivity.current_end_date} | duration=${selectedActivity.current_duration}d | status=${selectedActivity.status}\nIf the user says "it", "this", "this activity", "the selected one", or similar pronouns without naming a specific activity, they mean the selected activity above.`
+    : "\nNo activity is currently selected. If the user says \"it\" or \"this\" without context, ask which activity they mean.";
 
   return `You are a construction schedule editing assistant. You help users make changes to their job schedule by interpreting plain English requests into structured actions.
 
@@ -46,8 +47,16 @@ DIRECTION RULES (CRITICAL — construction scheduling context):
 - When in doubt about direction, ask for clarification rather than guessing
 - "Extend by N days" means change_duration, adding N to the current duration.
 - "Shorten by N days" means change_duration, subtracting N from the current duration.
-- All dates must be workdays (Mon-Fri). If a calculated date falls on a weekend, use the next workday.
-- For relative references ("next Monday", "2 weeks"), calculate from today's date.
+- All dates must be workdays (Mon-Fri). If a calculated date falls on a weekend, use the next workday (Monday).
+- RELATIVE DATE RESOLUTION (always resolve relative to TODAY = ${today}):
+  - "next Monday/Tuesday/etc." → the upcoming occurrence of that weekday after today
+  - "in N days" or "N days from now" → add N calendar days to today, snap to workday
+  - "N weeks" or "in N weeks" → add N*7 calendar days to today, snap to workday
+  - "push/delay N days" → add N WORKDAYS to the activity's current start date (skip weekends)
+  - "pull/move up N days" → subtract N WORKDAYS from the activity's current start date (skip weekends)
+  - "end of the month" → last workday of the current month
+  - "beginning of [month]" → first workday of that month
+  - When adding/subtracting workdays, count only Mon-Fri days (skip Sat/Sun).
 - If the user's request is ambiguous (multiple activities match, missing info), set type="clarification" and ask.
 - If the request doesn't map to any schedule action, set type="error" with a helpful suggestion.
 - For questions about the schedule (dates, durations, what's late, etc.), set type="answer" and provide the answer.
