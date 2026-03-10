@@ -409,7 +409,8 @@ export function CalendarView({ activities, dependencies, calendarDays, onActivit
                         <button
                           key={isGhost ? `ghost-${a.jsa_rid}-${idx}` : a.job_schedule_activity_id}
                           onClick={() => !isGhost && (onActivityClick ? onActivityClick(a) : setSelected(a))}
-                          className={`block w-full truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight text-white transition ${barColor(a.status)} ${stagingClass} ${isGhost ? "opacity-25 cursor-default" : "hover:opacity-80"}`}
+                          className={`block w-full truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight text-white transition ${barColor(a.status)} ${stagingClass} ${isGhost ? "opacity-20 cursor-default ring-1 ring-gray-400 ring-offset-0" : "hover:opacity-80"}`}
+                          style={isGhost ? { borderStyle: "dashed", borderWidth: 1, borderColor: "#9ca3af" } : undefined}
                           title={isGhost ? `${a.description} (original position)` : `${a.description}${dayTag}`}
                         >
                           {a.description}{isGhost ? "" : dayTag}
