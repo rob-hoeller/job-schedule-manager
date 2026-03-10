@@ -11,7 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, interactive-widget=resizes-content" />
       </head>
       <body className="bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100 min-h-screen antialiased">
         <AuthProvider>{children}</AuthProvider>
