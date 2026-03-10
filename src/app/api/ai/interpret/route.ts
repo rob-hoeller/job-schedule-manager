@@ -64,7 +64,8 @@ Action response:
       "jsa_rid": <number>,
       "activity_description": "<name>",
       "action_type": "move_start" | "change_duration" | "set_status",
-      "value": "<date string or number or status string>",
+      "current_value": "<current date/duration/status before the change>",
+      "value": "<new date string or number or status string>",
       "explanation": "Brief explanation"
     }
   ]

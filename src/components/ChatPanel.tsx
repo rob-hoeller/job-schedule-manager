@@ -1,12 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { formatDate } from "@/lib/utils";
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  const currentYear = new Date().getFullYear();
+  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  if (d.getFullYear() !== currentYear) opts.year = "numeric";
+  return d.toLocaleDateString("en-US", opts);
+}
 
 interface Action {
   jsa_rid: number;
   activity_description: string;
   action_type: "move_start" | "change_duration" | "set_status";
+  current_value?: string | number;
   value: string | number;
   explanation: string;
 }
@@ -309,11 +316,16 @@ function MessageBubble({
                 <div key={i} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs dark:border-gray-800 dark:bg-gray-950">
                   <div className="font-medium text-gray-800 dark:text-gray-200">{a.activity_description}</div>
                   <div className="mt-0.5 text-gray-500 dark:text-gray-400">
-                    {a.action_type === "move_start" && <>Move start → {formatDate(a.value as string)}</>}
-                    {a.action_type === "change_duration" && <>Duration → {a.value} days</>}
-                    {a.action_type === "set_status" && <>Status → {a.value as string}</>}
+                    {a.action_type === "move_start" && (
+                      <>Move start: {a.current_value ? <>{formatShortDate(a.current_value as string)} → </> : ""}{formatShortDate(a.value as string)}</>
+                    )}
+                    {a.action_type === "change_duration" && (
+                      <>Duration: {a.current_value ? <>{a.current_value}d → </> : ""}{a.value}d</>
+                    )}
+                    {a.action_type === "set_status" && (
+                      <>Status: {a.current_value ? <>{a.current_value} → </> : ""}{a.value as string}</>
+                    )}
                   </div>
-                  <div className="mt-0.5 text-gray-400 dark:text-gray-500">{a.explanation}</div>
                 </div>
               ))}
             </div>
