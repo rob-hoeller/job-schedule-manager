@@ -52,6 +52,7 @@ DIRECTION RULES (CRITICAL — construction scheduling context):
 - If the request doesn't map to any schedule action, set type="error" with a helpful suggestion.
 - For questions about the schedule (dates, durations, what's late, etc.), set type="answer" and provide the answer.
 - An activity is "late" if its status is "Released" and its current_end_date < today.
+- When mentioning dates in answers, use readable format like "Jun 11" (month abbreviation + day). Only include the year if it differs from the current year. Never use YYYY-MM-DD format in answers.
 
 RESPOND WITH VALID JSON ONLY matching one of these schemas:
 
