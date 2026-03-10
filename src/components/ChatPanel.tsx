@@ -171,19 +171,27 @@ export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid
 
   return (
     <>
-      {/* Mobile: full-screen overlay — isolate focus to suppress iOS form nav */}
-      <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-gray-950 sm:hidden" role="dialog" aria-modal="true">
-        <MobileHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} jobLabel={jobLabel} />
-        <ChatBody
-          messages={messages}
-          sending={sending}
-          stagingAction={stagingAction}
-          messagesEndRef={messagesEndRef}
-          onStage={handleStage}
-          onExample={send}
-          onOptionClick={send}
-        />
-        <ChatInput input={input} setInput={setInput} onKeyDown={handleKeyDown} onSend={() => send()} sending={sending} inputRef={inputRef} wrapRef={inputWrapRef} />
+      {/* Mobile: uses height 100% of body, not fixed, so iOS keyboard adjusts naturally */}
+      <div className="fixed inset-0 z-40 sm:hidden" role="dialog" aria-modal="true">
+        <div className="flex h-full flex-col bg-white dark:bg-gray-950">
+          <MobileHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} jobLabel={jobLabel} />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex-1 overflow-y-auto">
+              <ChatBody
+                messages={messages}
+                sending={sending}
+                stagingAction={stagingAction}
+                messagesEndRef={messagesEndRef}
+                onStage={handleStage}
+                onExample={send}
+                onOptionClick={send}
+              />
+            </div>
+            <div className="sticky bottom-0 bg-white dark:bg-gray-950">
+              <ChatInput input={input} setInput={setInput} onKeyDown={handleKeyDown} onSend={() => send()} sending={sending} inputRef={inputRef} wrapRef={inputWrapRef} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Desktop: slide-out panel */}
