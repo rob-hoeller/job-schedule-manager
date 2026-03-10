@@ -221,9 +221,9 @@ POST /api/ai/interpret
 | **GPT-4o** | Better reasoning, handles ambiguity well | ~$0.01/call, slightly slower |
 | **Claude Haiku** | Fast, cheap, good instruction following | Requires Anthropic key |
 
-**Recommendation:** Start with **GPT-4o-mini** for cost efficiency. A typical schedule has ~200 activities — the context fits easily. If accuracy is insufficient on edge cases, step up to GPT-4o.
+**Decision:** Start with **GPT-4o** for best accuracy during POC. This is not a production-scale app yet — accuracy matters more than cost optimization at this stage. Can drop to GPT-4o-mini later if cost becomes a concern.
 
-**Estimated cost per interaction:** $0.001–0.01 depending on model, well under $0.05 even for multi-turn conversations.
+**Estimated cost per interaction:** ~$0.01–0.03 with GPT-4o, well under $0.05 even for multi-turn conversations.
 
 ### System Prompt Design
 
@@ -375,16 +375,63 @@ CREATE INDEX idx_chat_timestamp ON chat_interactions(created_at);
 
 ---
 
-## Estimated Effort
+## Sprint Plan
 
-| Component | Estimate |
+### Sprint 1: Foundation — API + Basic Chat UI
+**Goal:** End-to-end flow working for simple single-activity schedule moves.
+
+| Task | Details |
 |---|---|
-| API route + AI prompt engineering | 1-2 days |
-| Chat UI (button, panel/overlay, confirmation flow) | 1-2 days |
-| Status change handling (single + bulk) | 0.5-1 day |
-| Query/answer responses | 0.5 day |
-| Disambiguation/multi-action handling | 1 day |
-| Context injection (selected activity, conversation history) | 0.5 day |
-| Chat interaction logging table + migration | 0.5 day |
-| Testing + prompt tuning | 1-2 days |
-| **Total** | **~6-8 days** |
+| `chat_interactions` table | Migration SQL, Rob runs in Supabase |
+| `POST /api/ai/interpret` | API route: loads schedule context, calls GPT-4o with system prompt, validates response, logs to `chat_interactions` |
+| System prompt v1 | Role, available actions (Move Start, Change Duration), activity list injection, JSON output schema, workday awareness |
+| `ChatPanel` component | Slide-out panel (desktop) / full-screen overlay (mobile), text input, send button, loading state |
+| 💬 button | Added to toolbar row next to History button |
+| Confirmation UI | Show AI interpretation + proposed actions, [Stage Changes] / [Cancel] / [Try Again] buttons |
+| Wire to staging | Confirmed actions feed into existing `useStaging` hook → cascade engine → staging toolbar |
+| Placeholder examples | Show example prompts in empty chat state |
+
+**Deliverable:** User types "Push drywall back 3 days" → sees interpretation → confirms → changes staged with cascade. Basic error handling for unrecognizable requests.
+
+---
+
+### Sprint 2: Status Changes + Queries
+**Goal:** Chat handles status updates and answers questions about the schedule.
+
+| Task | Details |
+|---|---|
+| Status actions | `set_status` action type — single activity ("Mark install windows as complete") |
+| Bulk status | "Approve all late activities", "Complete everything before framing" — AI resolves to multiple `set_status` actions |
+| Query responses | "When does drywall start?", "What's late?", "How long is framing?" — AI returns `type: "answer"` with no actions |
+| Status validation | Enforce transition rules (Released → Completed/Approved, Completed → Approved only, Approved = locked) |
+| Wire status to API | Confirmed status actions call existing `/api/activities/status` endpoint |
+
+**Deliverable:** Full action vocabulary — moves, duration changes, status updates, and informational queries all working through the chat.
+
+---
+
+### Sprint 3: Smart Features
+**Goal:** Context awareness, ambiguity handling, conversation memory.
+
+| Task | Details |
+|---|---|
+| Selected activity context | Pass `selected_jsa_rid` to API — "push it back 3 days" resolves to the selected activity |
+| Ambiguity UI | When AI returns `clarification_needed`, show options as clickable buttons |
+| Multi-action requests | "Extend framing by 3 days and push drywall to May 10" → multiple actions in one confirmation |
+| Conversation history | Keep last N messages in chat session, pass to API for context ("actually make that 5 days") |
+| Relative dates | "Push to next Monday", "delay 2 weeks" — workday-aware date resolution |
+| Dependency-aware moves | "Push everything after framing back 5 days" |
+
+**Deliverable:** Polished, context-aware chat that handles edge cases gracefully.
+
+---
+
+### Sprint Summary
+
+| Sprint | Scope | Priority |
+|---|---|---|
+| **Sprint 1** | API + Chat UI + basic moves + confirmation flow | P0 |
+| **Sprint 2** | Status changes + bulk status + queries | P0 |
+| **Sprint 3** | Context, ambiguity, multi-action, conversation history | P1-P2 |
+
+Each sprint produces a working, testable build on Vercel.

@@ -23,6 +23,7 @@ export interface ActivitySnapshot {
   current_start_date: string | null;
   current_end_date: string | null;
   current_duration: number | null;
+  status?: string;
 }
 
 export interface DependencyRecord {
@@ -289,6 +290,9 @@ export function calculateCascade(
     const current = state.get(jsaRid);
     if (!current) continue;
     const act = actMap.get(jsaRid)!;
+
+    // Skip Approved/Completed activities — they are locked
+    if (act.status === "Approved" || act.status === "Completed") continue;
     const preds = predMap.get(jsaRid) ?? [];
 
     // Find the most constraining predecessor using actual current gaps
