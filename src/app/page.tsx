@@ -74,7 +74,9 @@ export default function Home() {
   }, [refreshSchedule]);
 
   return (
-    <main className="mx-auto flex h-dvh max-w-6xl flex-col px-4 py-4 sm:px-6 lg:px-8">
+    <>
+    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+    <main className="mx-auto flex h-dvh max-w-6xl flex-col px-4 py-4 sm:px-6 lg:px-8" {...(showChat ? { inert: "" } as any : {})}>
       <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
 
       <header className="mb-3 shrink-0">
@@ -187,18 +189,20 @@ export default function Home() {
         />
       )}
 
-      {job && (
-        <ChatPanel
-          open={showChat}
-          onClose={() => setShowChat(false)}
-          scheduleRid={job.schedule_rid}
-          jobLabel={`${job.community_name} Lot ${job.lot_number}`}
-          selectedJsaRid={editingActivity?.jsa_rid ?? null}
-          onStageEdit={staging.stageEdit}
-          onStatusUpdate={staging.updateStatus}
-          onRefresh={refreshSchedule}
-        />
-      )}
     </main>
+
+    {job && (
+      <ChatPanel
+        open={showChat}
+        onClose={() => setShowChat(false)}
+        scheduleRid={job.schedule_rid}
+        jobLabel={`${job.community_name} Lot ${job.lot_number}`}
+        selectedJsaRid={editingActivity?.jsa_rid ?? null}
+        onStageEdit={staging.stageEdit}
+        onStatusUpdate={staging.updateStatus}
+        onRefresh={refreshSchedule}
+      />
+    )}
+    </>
   );
 }

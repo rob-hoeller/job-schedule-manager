@@ -171,8 +171,8 @@ export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid
 
   return (
     <>
-      {/* Mobile: full-screen overlay */}
-      <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-gray-950 sm:hidden">
+      {/* Mobile: full-screen overlay — isolate focus to suppress iOS form nav */}
+      <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-gray-950 sm:hidden" role="dialog" aria-modal="true">
         <MobileHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} jobLabel={jobLabel} />
         <ChatBody
           messages={messages}
@@ -442,13 +442,17 @@ function ChatInput({
         <input
           ref={inputRef}
           type="text"
+          inputMode="text"
+          enterKeyHint="send"
+          autoComplete="off"
+          autoCorrect="on"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
           onFocus={handleFocus}
           placeholder="Describe a change or ask a question…"
           disabled={sending}
-          className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none dark:text-gray-200 dark:placeholder-gray-500"
+          className="flex-1 bg-transparent text-base text-gray-800 placeholder-gray-400 outline-none dark:text-gray-200 dark:placeholder-gray-500"
         />
         <button
           onClick={onSend}
