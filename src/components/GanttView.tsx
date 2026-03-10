@@ -590,7 +590,7 @@ const GanttChart = memo(function GanttChart({
             const gw = Math.max(gSpan * colW - 2, 4);
             if (gx >= 0 && gx < chartW) {
               ghostEl = (
-                <rect x={gx} y={y} width={gw} height={BAR_H} rx={3} fill={fill(a.status)} opacity={0.15} stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="4 2" />
+                <rect x={gx} y={y} width={gw} height={BAR_H} rx={3} fill={fill(a.status)} opacity={0.4} stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="4 2" />
               );
             }
           }
