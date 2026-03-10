@@ -19,6 +19,16 @@ function buildSystemPrompt(
     .map((a) => `  - jsa_rid=${a.jsa_rid} | "${a.description}" | start=${a.current_start_date} | end=${a.current_end_date} | duration=${a.current_duration}d | status=${a.status}`)
     .join("\n");
 
+  // Pre-compute stats so the AI doesn't have to count across hundreds of activities
+  const lateActivities = activities.filter((a) => a.status === "Released" && a.current_end_date && a.current_end_date < today);
+  const statusCounts = activities.reduce((acc, a) => { acc[a.status] = (acc[a.status] || 0) + 1; return acc; }, {} as Record<string, number>);
+  const statsBlock = `
+SCHEDULE STATISTICS (pre-computed, use these for aggregate queries):
+- Total activities: ${activities.length}
+- By status: ${Object.entries(statusCounts).map(([s, n]) => `${s}=${n}`).join(", ")}
+- Late activities (Released with end_date < today): ${lateActivities.length}
+${lateActivities.length > 0 ? "- Late activity list:\n" + lateActivities.map((a) => `    * jsa_rid=${a.jsa_rid} "${a.description}" end=${a.current_end_date}`).join("\n") : ""}`;
+
   const selectedActivity = selectedJsaRid ? activities.find((a) => a.jsa_rid === selectedJsaRid) : null;
   const selectedCtx = selectedActivity
     ? `\nSELECTED ACTIVITY: jsa_rid=${selectedActivity.jsa_rid} | "${selectedActivity.description}" | start=${selectedActivity.current_start_date} | end=${selectedActivity.current_end_date} | duration=${selectedActivity.current_duration}d | status=${selectedActivity.status}\nIf the user says "it", "this", "this activity", "the selected one", or similar pronouns without naming a specific activity, they mean the selected activity above.`
@@ -31,6 +41,7 @@ WORKDAYS: Monday through Friday only. Weekends and holidays are non-workdays.${s
 
 CURRENT SCHEDULE (${activities.length} activities):
 ${activityList}
+${statsBlock}
 
 AVAILABLE ACTIONS:
 1. "move_start" — Move an activity's start date. Preserves duration, end date adjusts. Value = new start date (YYYY-MM-DD, must be a workday).
