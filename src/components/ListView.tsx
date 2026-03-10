@@ -28,6 +28,7 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
   const [query, setQuery] = useState("");
   const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set(["Approved"]));
   const [showLate, setShowLate] = useState(false);
+  const [showStaged, setShowStaged] = useState(false);
   const [today, setToday] = useState<string>("");
 
   // Get client-side current date
@@ -73,11 +74,15 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
     ).length;
   }, [activities, today]);
 
+  const stagedCount = stagedChanges?.size ?? 0;
+
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     let result = activities;
 
-    if (showLate && today) {
+    if (showStaged && stagedChanges && stagedChanges.size > 0) {
+      result = result.filter((a) => stagedChanges.has(a.jsa_rid));
+    } else if (showLate && today) {
       result = result.filter(
         (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today,
       );
@@ -95,10 +100,11 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
     return [...result].sort((a, b) =>
       (a.current_start_date ?? "").localeCompare(b.current_start_date ?? ""),
     );
-  }, [activities, query, hiddenStatuses, showLate, today]);
+  }, [activities, query, hiddenStatuses, showLate, showStaged, stagedChanges, today]);
 
   function toggleStatus(status: string) {
     if (showLate) setShowLate(false);
+    if (showStaged) setShowStaged(false);
     setHiddenStatuses((prev) => {
       const next = new Set(prev);
       if (next.has(status)) next.delete(status);
@@ -108,7 +114,13 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
   }
 
   function toggleLate() {
+    if (showStaged) setShowStaged(false);
     setShowLate((prev) => !prev);
+  }
+
+  function toggleStaged() {
+    if (showLate) setShowLate(false);
+    setShowStaged((prev) => !prev);
   }
 
   return (
@@ -130,6 +142,14 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
             className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 ${showLate ? "ring-2 ring-red-500/40 hover:opacity-80" : "opacity-30 hover:opacity-60"}`}
           >
             Late <span className="font-normal">{lateCount}</span>
+          </button>
+        )}
+        {stagedCount > 0 && (
+          <button
+            onClick={toggleStaged}
+            className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 ${showStaged ? "ring-2 ring-amber-500/40 hover:opacity-80" : "opacity-30 hover:opacity-60"}`}
+          >
+            Staged <span className="font-normal">{stagedCount}</span>
           </button>
         )}
       </div>

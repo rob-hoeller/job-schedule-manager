@@ -40,6 +40,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   scheduleRid: number;
+  jobLabel: string;
   selectedJsaRid: number | null;
   onStageEdit: (jsaRid: number, moveType: "move_start" | "change_duration", value: string | number) => Promise<void>;
   onStatusUpdate: (jsaRid: number, status: string, note: string) => Promise<void>;
@@ -54,13 +55,14 @@ const EXAMPLES = [
   "What activities are late?",
 ];
 
-export function ChatPanel({ open, onClose, scheduleRid, selectedJsaRid, onStageEdit, onStatusUpdate, onRefresh }: Props) {
+export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid, onStageEdit, onStatusUpdate, onRefresh }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [stagingAction, setStagingAction] = useState<{ msgId: number; actionIdx: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputWrapRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
 
   // Auto-scroll on new messages
@@ -169,24 +171,32 @@ export function ChatPanel({ open, onClose, scheduleRid, selectedJsaRid, onStageE
 
   return (
     <>
-      {/* Mobile: full-screen overlay */}
-      <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-gray-950 sm:hidden">
-        <MobileHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} />
-        <ChatBody
-          messages={messages}
-          sending={sending}
-          stagingAction={stagingAction}
-          messagesEndRef={messagesEndRef}
-          onStage={handleStage}
-          onExample={send}
-          onOptionClick={send}
-        />
-        <ChatInput input={input} setInput={setInput} onKeyDown={handleKeyDown} onSend={() => send()} sending={sending} inputRef={inputRef} />
+      {/* Mobile: uses height 100% of body, not fixed, so iOS keyboard adjusts naturally */}
+      <div className="fixed inset-0 z-40 sm:hidden" role="dialog" aria-modal="true">
+        <div className="flex h-full flex-col bg-white dark:bg-gray-950">
+          <MobileHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} jobLabel={jobLabel} />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex-1 overflow-y-auto">
+              <ChatBody
+                messages={messages}
+                sending={sending}
+                stagingAction={stagingAction}
+                messagesEndRef={messagesEndRef}
+                onStage={handleStage}
+                onExample={send}
+                onOptionClick={send}
+              />
+            </div>
+            <div className="sticky bottom-0 bg-white dark:bg-gray-950">
+              <ChatInput input={input} setInput={setInput} onKeyDown={handleKeyDown} onSend={() => send()} sending={sending} inputRef={inputRef} wrapRef={inputWrapRef} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Desktop: slide-out panel */}
       <div className="fixed inset-y-0 right-0 z-40 hidden w-96 flex-col border-l border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-950 sm:flex">
-        <DesktopHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} />
+        <DesktopHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} jobLabel={jobLabel} />
         <ChatBody
           messages={messages}
           sending={sending}
@@ -204,31 +214,37 @@ export function ChatPanel({ open, onClose, scheduleRid, selectedJsaRid, onStageE
 
 /* ── Sub-components ── */
 
-function MobileHeader({ onClose, onClear, messageCount }: { onClose: () => void; onClear: () => void; messageCount: number }) {
+function MobileHeader({ onClose, onClear, messageCount, jobLabel }: { onClose: () => void; onClear: () => void; messageCount: number; jobLabel: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+    <div className="flex items-center justify-between bg-blue-600 px-4 py-3 text-white">
       <div className="flex items-center gap-2">
-        <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+        <button onClick={onClose} className="text-blue-100 hover:text-white">
           ← Back
         </button>
-        <h2 className="text-sm font-semibold">Schedule Assistant</h2>
+        <div>
+          <h2 className="text-sm font-semibold">✨ Schedule Assistant</h2>
+          <p className="text-[11px] text-blue-200">{jobLabel}</p>
+        </div>
       </div>
       {messageCount > 0 && (
-        <button onClick={onClear} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">Clear</button>
+        <button onClick={onClear} className="text-xs text-blue-200 hover:text-white">Clear</button>
       )}
     </div>
   );
 }
 
-function DesktopHeader({ onClose, onClear, messageCount }: { onClose: () => void; onClear: () => void; messageCount: number }) {
+function DesktopHeader({ onClose, onClear, messageCount, jobLabel }: { onClose: () => void; onClear: () => void; messageCount: number; jobLabel: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800">
-      <h2 className="text-sm font-semibold">💬 Schedule Assistant</h2>
+    <div className="flex items-center justify-between bg-blue-600 px-4 py-3 text-white">
+      <div>
+        <h2 className="text-sm font-semibold">✨ Schedule Assistant</h2>
+        <p className="text-[11px] text-blue-200">{jobLabel}</p>
+      </div>
       <div className="flex items-center gap-2">
         {messageCount > 0 && (
-          <button onClick={onClear} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">Clear</button>
+          <button onClick={onClear} className="text-xs text-blue-200 hover:text-white">Clear</button>
         )}
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
+        <button onClick={onClose} className="text-blue-100 hover:text-white">✕</button>
       </div>
     </div>
   );
@@ -410,7 +426,7 @@ function MessageBubble({
 }
 
 function ChatInput({
-  input, setInput, onKeyDown, onSend, sending, inputRef,
+  input, setInput, onKeyDown, onSend, sending, inputRef, wrapRef,
 }: {
   input: string;
   setInput: (v: string) => void;
@@ -418,19 +434,33 @@ function ChatInput({
   onSend: () => void;
   sending: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  wrapRef?: React.RefObject<HTMLDivElement | null>;
 }) {
+  function handleFocus() {
+    // Delay to let iOS keyboard animate open, then scroll input into view
+    setTimeout(() => {
+      wrapRef?.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      inputRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 300);
+  }
+
   return (
-    <div className="border-t border-gray-200 p-3 dark:border-gray-800">
+    <div ref={wrapRef} className="shrink-0 border-t border-gray-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-gray-800">
       <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-900">
         <input
           ref={inputRef}
           type="text"
+          inputMode="text"
+          enterKeyHint="send"
+          autoComplete="off"
+          autoCorrect="on"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
+          onFocus={handleFocus}
           placeholder="Describe a change or ask a question…"
           disabled={sending}
-          className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none dark:text-gray-200 dark:placeholder-gray-500"
+          className="flex-1 bg-transparent text-base text-gray-800 placeholder-gray-400 outline-none dark:text-gray-200 dark:placeholder-gray-500"
         />
         <button
           onClick={onSend}

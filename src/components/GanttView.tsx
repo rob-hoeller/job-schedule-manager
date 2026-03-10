@@ -575,12 +575,34 @@ const GanttChart = memo(function GanttChart({
         const isStaged = stagedChanges?.has(a.jsa_rid) ?? false;
         const isCascaded = isStaged && ![...(stagedChanges!.get(a.jsa_rid)!.values())].some((c) => c.is_direct_edit);
 
+        // Ghost bar for original position when staged
+        let ghostEl: React.ReactNode = null;
+        if (isStaged && stagedChanges) {
+          const fields = stagedChanges.get(a.jsa_rid);
+          const origStart = fields?.get("start_date")?.original_value;
+          const origEnd = fields?.get("end_date")?.original_value;
+          if (origStart && origEnd) {
+            const osd = parseLocalDate(origStart);
+            const oed = parseLocalDate(origEnd);
+            const gStartOff = daysBetween(startDate, osd);
+            const gSpan = daysBetween(osd, oed) + 1;
+            const gx = gStartOff * colW;
+            const gw = Math.max(gSpan * colW - 2, 4);
+            if (gx >= 0 && gx < chartW) {
+              ghostEl = (
+                <rect x={gx} y={y} width={gw} height={BAR_H} rx={3} fill={fill(a.status)} opacity={0.4} stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="4 2" />
+              );
+            }
+          }
+        }
+
         return (
           <g
             key={a.job_schedule_activity_id}
             className="cursor-pointer"
             onClick={() => onBarClick(a)}
           >
+            {ghostEl}
             <rect
               x={x}
               y={y}

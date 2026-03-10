@@ -152,16 +152,54 @@ export async function POST(request: NextRequest) {
       parsed = { type: "error", message: "Failed to parse AI response. Please try again." };
     }
 
-    // Validate jsa_rids in actions exist
+    // Validate actions
     if (parsed.type === "action" && Array.isArray(parsed.actions)) {
-      const validRids = new Set(activities.map((a) => a.jsa_rid));
-      for (const action of parsed.actions as Array<{ jsa_rid: number }>) {
-        if (!validRids.has(action.jsa_rid)) {
-          parsed = {
-            type: "error",
-            message: `Could not find activity with ID ${action.jsa_rid}. Please try rephrasing your request.`,
-          };
+      const actByRid = new Map(activities.map((a) => [a.jsa_rid, a]));
+      const validatedActions = [];
+      const warnings: string[] = [];
+
+      for (const action of parsed.actions as Array<{ jsa_rid: number; action_type: string; value: string | number }>) {
+        const act = actByRid.get(action.jsa_rid);
+        if (!act) {
+          parsed = { type: "error", message: `Could not find activity with ID ${action.jsa_rid}. Please try rephrasing your request.` };
           break;
+        }
+
+        // Validate status transitions
+        if (action.action_type === "set_status") {
+          const status = action.value as string;
+          if (act.status === "Approved") {
+            warnings.push(`${act.description} is already Approved (locked)`);
+            continue; // skip this action
+          }
+          if (act.status === "Completed" && status === "Completed") {
+            warnings.push(`${act.description} is already Completed`);
+            continue;
+          }
+          if (act.status === "Completed" && status !== "Approved") {
+            warnings.push(`${act.description} is Completed — can only be Approved, not reverted`);
+            continue;
+          }
+        }
+
+        // Validate move actions don't target locked activities
+        if ((action.action_type === "move_start" || action.action_type === "change_duration") &&
+            (act.status === "Approved" || act.status === "Completed")) {
+          warnings.push(`${act.description} is ${act.status} and cannot be moved`);
+          continue;
+        }
+
+        validatedActions.push(action);
+      }
+
+      if (parsed.type === "action") {
+        (parsed as Record<string, unknown>).actions = validatedActions;
+        if (warnings.length > 0) {
+          (parsed as Record<string, unknown>).interpretation =
+            ((parsed.interpretation as string) ?? "") + "\n\n⚠️ Skipped: " + warnings.join("; ");
+        }
+        if (validatedActions.length === 0 && warnings.length > 0) {
+          parsed = { type: "error", message: "No valid actions: " + warnings.join("; ") };
         }
       }
     }
@@ -182,8 +220,9 @@ export async function POST(request: NextRequest) {
         cost_usd: usage ? ((usage.prompt_tokens ?? 0) * 2.5 / 1_000_000) + ((usage.completion_tokens ?? 0) * 10 / 1_000_000) : null,
         duration_ms: durationMs,
       });
-    } catch {
+    } catch (logErr) {
       // Non-fatal — don't fail the request if logging fails
+      console.error("Failed to log chat interaction:", logErr);
     }
 
     return NextResponse.json({
