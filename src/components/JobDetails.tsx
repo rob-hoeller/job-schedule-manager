@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Job, Activity } from "@/types";
-import { formatDate, dayDrift, driftClass, driftLabel } from "@/lib/utils";
+import { formatDateCompact, dayDrift, driftClass, driftLabel } from "@/lib/utils";
 
 interface Props {
   job: Job;
@@ -41,10 +41,10 @@ export function JobDetails({ job, settlement }: Props) {
           className="flex w-full items-center justify-between px-3 py-2 text-left text-sm"
         >
           <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5">
-            <Detail label="Start" value={formatDate(job.start_date)} />
+            <Detail label="Start" value={formatDateCompact(job.start_date)} />
             <Detail
               label="Settlement"
-              value={settlement ? formatDate(settlement.current_start_date) : "—"}
+              value={settlement ? formatDateCompact(settlement.current_start_date) : "—"}
               extra={settlementExtra}
             />
           </div>
@@ -67,10 +67,10 @@ export function JobDetails({ job, settlement }: Props) {
           <Detail label="Lot" value={job.lot_number} />
           <Detail label="Plan" value={job.plan_name ?? "—"} />
           <Detail label="Status" value={job.status} />
-          <Detail label="Start" value={formatDate(job.start_date)} />
+          <Detail label="Start" value={formatDateCompact(job.start_date)} />
           <Detail
             label="Settlement"
-            value={settlement ? formatDate(settlement.current_start_date) : "—"}
+            value={settlement ? formatDateCompact(settlement.current_start_date) : "—"}
             extra={settlementExtra}
           />
         </div>

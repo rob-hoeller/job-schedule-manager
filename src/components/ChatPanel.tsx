@@ -183,12 +183,31 @@ export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid
     nextId.current = 1;
   }
 
-  if (!open) return null;
+  // Animation state: keep mounted during close animation
+  const [visible, setVisible] = useState(false);
+  const [animating, setAnimating] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setVisible(true);
+      requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
+    } else {
+      setAnimating(false);
+      const t = setTimeout(() => setVisible(false), 300);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+
+  if (!visible) return null;
 
   return (
     <>
-      {/* Mobile: uses height 100% of body, not fixed, so mobile keyboard adjusts naturally */}
-      <div className="fixed inset-0 z-40 sm:hidden" role="dialog" aria-modal="true">
+      {/* Mobile: full-screen slide-up */}
+      <div
+        className={`fixed inset-0 z-40 transition-transform duration-300 ease-out sm:hidden ${animating ? "translate-y-0" : "translate-y-full"}`}
+        role="dialog"
+        aria-modal="true"
+      >
         <div className="flex h-full flex-col bg-white dark:bg-gray-950">
           <MobileHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} jobLabel={jobLabel} />
           <div className="flex min-h-0 flex-1 flex-col">
@@ -210,8 +229,10 @@ export function ChatPanel({ open, onClose, scheduleRid, jobLabel, selectedJsaRid
         </div>
       </div>
 
-      {/* Desktop: slide-out panel */}
-      <div className="fixed inset-y-0 right-0 z-40 hidden w-96 flex-col border-l border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-950 sm:flex">
+      {/* Desktop: slide-in from right */}
+      <div
+        className={`fixed inset-y-0 right-0 z-40 hidden w-96 flex-col border-l border-gray-200 bg-white shadow-xl transition-transform duration-300 ease-out dark:border-gray-800 dark:bg-gray-950 sm:flex ${animating ? "translate-x-0" : "translate-x-full"}`}
+      >
         <DesktopHeader onClose={onClose} onClear={clearChat} messageCount={messages.length} jobLabel={jobLabel} />
         <ChatBody
           messages={messages}
