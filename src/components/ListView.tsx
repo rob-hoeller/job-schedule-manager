@@ -67,6 +67,7 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
   }, [activities, today]);
 
   const stagedCount = stagedChanges?.size ?? 0;
+  const notApprovedCount = useMemo(() => activities.filter((a) => a.status !== "Approved").length, [activities]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
@@ -96,9 +97,14 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
 
   const isStaging = stagedCount > 0;
 
+  // Reset to default filter when staging ends (discard/publish)
+  useEffect(() => {
+    if (!isStaging && filter === "staged") setFilter("not_approved");
+  }, [isStaging, filter]);
+
   const filters: { mode: FilterMode; label: string; count?: number; show: boolean }[] = [
     { mode: "all", label: "All", count: activities.length, show: true },
-    { mode: "not_approved", label: "Not Approved", show: true },
+    { mode: "not_approved", label: "Not Approved", count: notApprovedCount, show: true },
     { mode: "late", label: "Late", count: lateCount, show: lateCount > 0 },
     { mode: "staged", label: "Staged", count: stagedCount, show: isStaging },
   ];
