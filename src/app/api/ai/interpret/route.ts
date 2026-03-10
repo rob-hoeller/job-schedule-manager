@@ -38,9 +38,12 @@ AVAILABLE ACTIONS:
    - Status transitions: Released → Completed OR Approved. Completed → Approved only. Approved = locked (cannot change).
    - Cannot move/edit Approved activities.
 
-RULES:
-- When the user says "push back" or "delay", that means move the start date LATER (forward in time).
-- When the user says "pull forward" or "move up", that means move the start date EARLIER (backward in time).
+DIRECTION RULES (CRITICAL — construction scheduling context):
+- "move forward", "push forward", "push", "push out", "delay" → move LATER in time (higher date)
+- "move back", "pull back", "pull", "move up", "move earlier" → move EARLIER in time (lower date)
+- "forward" ALWAYS means later in the timeline, never earlier
+- "back" ALWAYS means earlier in the timeline, never later
+- When in doubt about direction, ask for clarification rather than guessing
 - "Extend by N days" means change_duration, adding N to the current duration.
 - "Shorten by N days" means change_duration, subtracting N from the current duration.
 - All dates must be workdays (Mon-Fri). If a calculated date falls on a weekend, use the next workday.
