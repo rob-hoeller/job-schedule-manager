@@ -3,7 +3,6 @@
 import { useMemo, useState, useEffect } from "react";
 import type { Activity, Dependency } from "@/types";
 import { ActivityRow } from "./ActivityRow";
-import { statusClass } from "@/lib/utils";
 
 import type { StagedChange } from "@/hooks/useStaging";
 
@@ -13,6 +12,8 @@ interface Props {
   onActivityClick?: (activity: Activity, mode?: "move_start" | "change_duration" | "status") => void;
   stagedChanges?: Map<number, Map<string, StagedChange>>;
 }
+
+type FilterMode = "all" | "not_approved" | "late" | "staged";
 
 const COL_HEADERS: { label: string; className: string }[] = [
   { label: "Activity", className: "" },
@@ -26,12 +27,9 @@ const COL_HEADERS: { label: string; className: string }[] = [
 
 export function ListView({ activities, dependencies, onActivityClick, stagedChanges }: Props) {
   const [query, setQuery] = useState("");
-  const [hiddenStatuses, setHiddenStatuses] = useState<Set<string>>(new Set(["Approved"]));
-  const [showLate, setShowLate] = useState(false);
-  const [showStaged, setShowStaged] = useState(false);
+  const [filter, setFilter] = useState<FilterMode>("not_approved");
   const [today, setToday] = useState<string>("");
 
-  // Get client-side current date
   useEffect(() => {
     setToday(new Date().toISOString().slice(0, 10));
   }, []);
@@ -61,12 +59,6 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
     return m;
   }, [dependencies]);
 
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const a of activities) counts[a.status] = (counts[a.status] ?? 0) + 1;
-    return counts;
-  }, [activities]);
-
   const lateCount = useMemo(() => {
     if (!today) return 0;
     return activities.filter(
@@ -75,19 +67,20 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
   }, [activities, today]);
 
   const stagedCount = stagedChanges?.size ?? 0;
+  const notApprovedCount = useMemo(() => activities.filter((a) => a.status !== "Approved").length, [activities]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     let result = activities;
 
-    if (showStaged && stagedChanges && stagedChanges.size > 0) {
-      result = result.filter((a) => stagedChanges.has(a.jsa_rid));
-    } else if (showLate && today) {
+    if (filter === "not_approved") {
+      result = result.filter((a) => a.status !== "Approved");
+    } else if (filter === "late" && today) {
       result = result.filter(
         (a) => a.status !== "Approved" && a.current_end_date !== null && a.current_end_date < today,
       );
-    } else if (hiddenStatuses.size > 0) {
-      result = result.filter((a) => !hiddenStatuses.has(a.status));
+    } else if (filter === "staged" && stagedChanges && stagedChanges.size > 0) {
+      result = result.filter((a) => stagedChanges.has(a.jsa_rid));
     }
 
     if (q)
@@ -100,58 +93,52 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
     return [...result].sort((a, b) =>
       (a.current_start_date ?? "").localeCompare(b.current_start_date ?? ""),
     );
-  }, [activities, query, hiddenStatuses, showLate, showStaged, stagedChanges, today]);
+  }, [activities, query, filter, stagedChanges, today]);
 
-  function toggleStatus(status: string) {
-    if (showLate) setShowLate(false);
-    if (showStaged) setShowStaged(false);
-    setHiddenStatuses((prev) => {
-      const next = new Set(prev);
-      if (next.has(status)) next.delete(status);
-      else next.add(status);
-      return next;
-    });
-  }
+  const isStaging = stagedCount > 0;
 
-  function toggleLate() {
-    if (showStaged) setShowStaged(false);
-    setShowLate((prev) => !prev);
-  }
+  // Reset to default filter when staging ends (discard/publish)
+  useEffect(() => {
+    if (!isStaging && filter === "staged") setFilter("not_approved");
+  }, [isStaging, filter]);
 
-  function toggleStaged() {
-    if (showLate) setShowLate(false);
-    setShowStaged((prev) => !prev);
+  const filters: { mode: FilterMode; label: string; count?: number; show: boolean }[] = [
+    { mode: "all", label: "All", count: activities.length, show: true },
+    { mode: "not_approved", label: "Not Approved", count: notApprovedCount, show: true },
+    { mode: "late", label: "Late", count: lateCount, show: lateCount > 0 },
+    { mode: "staged", label: "Staged", count: stagedCount, show: isStaging },
+  ];
+
+  function filterStyle(mode: FilterMode) {
+    const active = filter === mode;
+    if (mode === "late") {
+      return active
+        ? "bg-red-600 text-white"
+        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700";
+    }
+    if (mode === "staged") {
+      return active
+        ? "bg-amber-600 text-white"
+        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700";
+    }
+    return active
+      ? "bg-blue-600 text-white"
+      : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700";
   }
 
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* Status filters */}
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        {Object.entries(statusCounts).map(([status, count]) => (
+      {/* Filter toggles */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {filters.filter((f) => f.show).map((f) => (
           <button
-            key={status}
-            onClick={() => toggleStatus(status)}
-            className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition ${statusClass(status)} ${showLate ? "opacity-30" : hiddenStatuses.has(status) ? "opacity-30 line-through" : "hover:opacity-80"}`}
+            key={f.mode}
+            onClick={() => setFilter(f.mode)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${filterStyle(f.mode)}`}
           >
-            {status} <span className="font-normal">{count}</span>
+            {f.label}{f.count !== undefined ? ` (${f.count})` : ""}
           </button>
         ))}
-        {lateCount > 0 && (
-          <button
-            onClick={toggleLate}
-            className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 ${showLate ? "ring-2 ring-red-500/40 hover:opacity-80" : "opacity-30 hover:opacity-60"}`}
-          >
-            Late <span className="font-normal">{lateCount}</span>
-          </button>
-        )}
-        {stagedCount > 0 && (
-          <button
-            onClick={toggleStaged}
-            className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 ${showStaged ? "ring-2 ring-amber-500/40 hover:opacity-80" : "opacity-30 hover:opacity-60"}`}
-          >
-            Staged <span className="font-normal">{stagedCount}</span>
-          </button>
-        )}
       </div>
 
       {/* Search */}
