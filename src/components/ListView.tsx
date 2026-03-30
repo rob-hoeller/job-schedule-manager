@@ -15,20 +15,22 @@ interface Props {
 
 type FilterMode = "all" | "not_approved" | "late" | "staged";
 
-const COL_HEADERS: { label: string; className: string }[] = [
-  { label: "Activity", className: "" },
-  { label: "Start", className: "text-center md:hidden" },
-  { label: "Trade Partner", className: "hidden sm:table-cell" },
-  { label: "Status", className: "text-center" },
-  { label: "Start", className: "hidden md:table-cell text-center" },
-  { label: "End", className: "hidden md:table-cell text-center" },
-  { label: "Days", className: "hidden lg:table-cell text-center" },
+const COL_HEADERS: { label: string; className: string; sortKey: 'activity' | 'trade_partner' | 'status' | 'start' | 'end' | 'days' | null }[] = [
+  { label: "Activity", className: "", sortKey: 'activity' },
+  { label: "Start", className: "text-center md:hidden", sortKey: 'start' },
+  { label: "Trade Partner", className: "hidden sm:table-cell", sortKey: 'trade_partner' },
+  { label: "Status", className: "text-center", sortKey: 'status' },
+  { label: "Start", className: "hidden md:table-cell text-center", sortKey: 'start' },
+  { label: "End", className: "hidden md:table-cell text-center", sortKey: 'end' },
+  { label: "Days", className: "hidden lg:table-cell text-center", sortKey: 'days' },
 ];
 
 export function ListView({ activities, dependencies, onActivityClick, stagedChanges }: Props) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterMode>("not_approved");
   const [today, setToday] = useState<string>("");
+  const [sortKey, setSortKey] = useState<'default' | 'activity' | 'trade_partner' | 'status' | 'start' | 'end' | 'days'>('default');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>(null);
 
   useEffect(() => {
     setToday(new Date().toISOString().slice(0, 10));
@@ -90,10 +92,31 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
           (a.trade_partner_name?.toLowerCase().includes(q) ?? false),
       );
 
-    return [...result].sort((a, b) =>
-      (a.current_start_date ?? "").localeCompare(b.current_start_date ?? ""),
-    );
-  }, [activities, query, filter, stagedChanges, today]);
+    const sorted = [...result];
+    if (sortKey === 'default' || sortDir === null) {
+      return sorted.sort((a, b) =>
+        (a.current_start_date ?? "").localeCompare(b.current_start_date ?? ""),
+      );
+    }
+
+    const dirFactor = sortDir === 'asc' ? 1 : -1;
+    switch (sortKey) {
+      case 'activity':
+        return sorted.sort((a, b) => a.description.localeCompare(b.description) * dirFactor);
+      case 'trade_partner':
+        return sorted.sort((a, b) => (a.trade_partner_name ?? '').localeCompare(b.trade_partner_name ?? '') * dirFactor);
+      case 'status':
+        return sorted.sort((a, b) => a.status.localeCompare(b.status) * dirFactor);
+      case 'start':
+        return sorted.sort((a, b) => (a.current_start_date ?? '').localeCompare(b.current_start_date ?? '') * dirFactor);
+      case 'end':
+        return sorted.sort((a, b) => (a.current_end_date ?? '').localeCompare(b.current_end_date ?? '') * dirFactor);
+      case 'days':
+        return sorted.sort((a, b) => ((a.current_duration ?? 0) - (b.current_duration ?? 0)) * dirFactor);
+      default:
+        return sorted;
+    }
+  }, [activities, query, filter, stagedChanges, today, sortKey, sortDir]);
 
   const isStaging = stagedCount > 0;
 
@@ -126,6 +149,20 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
       : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700";
   }
 
+  const handleHeaderClick = (key: 'activity' | 'trade_partner' | 'status' | 'start' | 'end' | 'days') => {
+    if (sortKey === key) {
+      if (sortDir === 'asc') {
+        setSortDir('desc');
+      } else if (sortDir === 'desc') {
+        setSortKey('default');
+        setSortDir(null);
+      }
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
   return (
     <div className="flex h-full flex-col gap-3">
       {/* Filter toggles */}
@@ -156,8 +193,13 @@ export function ListView({ activities, dependencies, onActivityClick, stagedChan
           <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
             <tr>
               {COL_HEADERS.map((h, i) => (
-                <th key={`${h.label}-${i}`} className={`px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 ${h.className}`}>
+                <th
+                  key={`${h.label}-${i}`}
+                  className={`px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 ${h.className} ${h.sortKey ? "cursor-pointer hover:text-gray-700 dark:hover:text-gray-200" : ""}`}
+                  onClick={() => h.sortKey && handleHeaderClick(h.sortKey)}
+                >
                   {h.label}
+                  {sortKey === h.sortKey && (sortDir === 'asc' ? ' ▲' : sortDir === 'desc' ? ' ▼' : '')}
                 </th>
               ))}
             </tr>
