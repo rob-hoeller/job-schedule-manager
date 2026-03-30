@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { Job, Activity } from "@/types";
-import { formatDateCompact, dayDrift, driftClass, driftLabel } from "@/lib/utils";
+import type { Job, Activity, CalendarDay } from "@/types";
+import { formatDateCompact, dayDrift, driftClass, driftLabel, countWorkdays } from "@/lib/utils";
 
 interface Props {
   job: Job;
   settlement: Activity | null;
+  calendarDays?: Map<string, CalendarDay>;
 }
 
 function Detail({ label, value, extra }: { label: string; value: string; extra?: React.ReactNode }) {
@@ -19,11 +20,15 @@ function Detail({ label, value, extra }: { label: string; value: string; extra?:
   );
 }
 
-export function JobDetails({ job, settlement }: Props) {
+export function JobDetails({ job, settlement, calendarDays }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const settleDrift = settlement
     ? dayDrift(settlement.original_start_date, settlement.current_start_date)
+    : null;
+
+  const totalWorkdays = settlement
+    ? countWorkdays(job.start_date, settlement.current_start_date, calendarDays)
     : null;
 
   const settlementExtra = settleDrift !== null ? (
@@ -55,6 +60,7 @@ export function JobDetails({ job, settlement }: Props) {
             <Detail label="Community" value={job.community_name} />
             <Detail label="Lot" value={job.lot_number} />
             <Detail label="Plan" value={job.plan_name ?? "—"} />
+            <Detail label="Workdays" value={totalWorkdays !== null ? String(totalWorkdays) : "—"} />
             <Detail label="Status" value={job.status} />
           </div>
         )}
@@ -73,6 +79,7 @@ export function JobDetails({ job, settlement }: Props) {
             value={settlement ? formatDateCompact(settlement.current_start_date) : "—"}
             extra={settlementExtra}
           />
+          <Detail label="Total Workdays" value={totalWorkdays !== null ? String(totalWorkdays) : "—"} />
         </div>
       </div>
     </div>
