@@ -44,6 +44,30 @@ export function statusClass(status: string) {
   return STATUS_STYLES[status] ?? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
 }
 
+/** Count workdays between two date strings (inclusive of start, exclusive of end).
+ *  Uses calendarDays map for accurate holiday/workday data; falls back to Mon-Fri. */
+export function countWorkdays(
+  startDate: string | null,
+  endDate: string | null,
+  calendarDays?: Map<string, { is_workday: number }>,
+): number | null {
+  if (!startDate || !endDate) return null;
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+
+  let count = 0;
+  const cursor = new Date(start);
+  while (cursor < end) {
+    const key = cursor.toISOString().slice(0, 10);
+    const cd = calendarDays?.get(key);
+    const isWorkday = cd ? cd.is_workday === 1 : (cursor.getDay() !== 0 && cursor.getDay() !== 6);
+    if (isWorkday) count++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return count;
+}
+
 /** Calculate workday drift between two date strings (positive = forward in time) */
 export function dayDrift(original: string | null, current: string | null): number | null {
   if (!original || !current) return null;

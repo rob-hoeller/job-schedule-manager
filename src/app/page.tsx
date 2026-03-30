@@ -114,7 +114,7 @@ export default function Home() {
       {job && (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <div className="shrink-0">
-            <JobDetails job={job} settlement={settlement} />
+            <JobDetails job={job} settlement={settlement} calendarDays={calendarDays} />
           </div>
 
           {/* Staging toolbar */}
